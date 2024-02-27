@@ -1,0 +1,5 @@
+hosts
+.vscode/
+images/
+library/lib.so
+library/__pycache__/
