@@ -1,10 +1,12 @@
 from keras.preprocessing.image import load_img, img_to_array
+import MPI
 import threading
 import queue
 import os
+import multiprocessing as mp
 
 class Communicator(threading.Thread):
-    def __init__(self, network_queue, mpi):
+    def __init__(self, network_queue:queue.Queue, mpi:MPI.MPI):
         super().__init__()
         self.network_queue = network_queue
         self.mpi = mpi
@@ -21,7 +23,7 @@ class Communicator(threading.Thread):
                 self.network_queue.put(tasks)
 
 class Fetcher(threading.Thread):
-    def __init__(self, network_queue, job_queues, num_workers):
+    def __init__(self, network_queue:queue.Queue, job_queues:mp.SimpleQueue, num_workers:int):
         super().__init__()
         self.job_queues = job_queues
         self.network_queue = network_queue
@@ -36,10 +38,8 @@ class Fetcher(threading.Thread):
                     jq.put((None,None))
                 break
             else:
-                # print(file_list)
                 for file in file_list:
-                    # print(file)
-                    if not file:
+                    if not file: # empty string handling
                         continue
                     # Distribute files to the job queues (with load balancing)
                     file = file.decode('utf-8')
@@ -48,10 +48,10 @@ class Fetcher(threading.Thread):
                     img = img.reshape((1,) + img.shape)
                     self.job_queues[dest].put((name, img))
                     if self.num_workers > 1:
-                        dest = (dest+1) // self.num_workers
+                        dest = (dest+1) % self.num_workers
 
 class Loader():
-    def __init__(self, job_queues, mpi, num_workers):
+    def __init__(self, job_queues:mp.SimpleQueue, mpi:MPI.MPI, num_workers:int):
         self.job_queues = job_queues
         self.network_queue = queue.Queue()
         self.mpi = mpi

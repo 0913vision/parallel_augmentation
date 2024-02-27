@@ -3,9 +3,10 @@ import queue
 from PIL import Image
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
+import multiprocessing as mp
 
 class Augmenter(threading.Thread):
-    def __init__(self, job_queue, complete_queue):
+    def __init__(self, job_queue:mp.SimpleQueue, complete_queue:queue.Queue):
         super().__init__()
         self.job_queue = job_queue
         self.complete_queue = complete_queue
@@ -41,7 +42,7 @@ class Augmenter(threading.Thread):
             # self.job_queue.task_done()
 
 class Flusher(threading.Thread):
-    def __init__(self, complete_queue, rank:int, num_osts:int, save_path:str):
+    def __init__(self, complete_queue:queue.Queue, rank:int, num_osts:int, save_path:str):
         super().__init__()
         self.complete_queue = complete_queue
         self.rank = rank
@@ -61,11 +62,8 @@ class Flusher(threading.Thread):
                 filename = f'{self.save_path}/./{(self.rank-1) % self.num_osts}/{name}_augmented_image_{i}.png'
                 img.save(filename)
 
-            # Signal task completion
-            # self.complete_queue.task_done()
-
 class Worker():
-    def __init__(self, job_queue, rank:int, osts:int, save_path:str):
+    def __init__(self, job_queue:mp.SimpleQueue, rank:int, osts:int, save_path:str):
         self.job_queue = job_queue
         self.complete_queue = queue.Queue()
         self.augmenter = Augmenter(self.job_queue, self.complete_queue)

@@ -1,4 +1,3 @@
-import ctypes
 from library import Loader, Worker, Master, MPI
 import multiprocessing
 from multiprocessing import Process
