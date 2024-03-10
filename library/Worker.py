@@ -52,8 +52,10 @@ class Flusher(threading.Thread):
 
         for i in range(size):
             dir_path = os.path.join(save_path, str(i))
-            if not os.path.exists(dir_path):
+            try:
                 os.makedirs(dir_path)
+            except FileExistsError:
+                pass
 
     def run(self):
         while True:
