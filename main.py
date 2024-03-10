@@ -30,12 +30,12 @@ def main(vcpu: int, osts:int, image_path:str, save_path:str):
         processes.append(loader_process)
         loader_process.start()
 
-        def run_worker(job_queue, rank, ost, save_path):
-            worker = Worker.Worker(job_queues[i], rank, ost, save_path)
+        def run_worker(job_queue, size, rank, ost, save_path):
+            worker = Worker.Worker(job_queues[i], size, rank, ost, save_path)
             worker.start()
 
         for i in range(num_workers):
-            p = Process(target=run_worker, args=(job_queues[i], mpi.rank, osts, save_path))
+            p = Process(target=run_worker, args=(job_queues[i], mpi.size-1, mpi.rank, osts, save_path))
             processes.append(p)
             p.start()
         

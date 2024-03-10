@@ -1,5 +1,5 @@
 from keras.preprocessing.image import load_img, img_to_array
-import MPI
+from . import MPI
 import threading
 import queue
 import os
