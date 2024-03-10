@@ -124,7 +124,7 @@ void serialize_and_send(MPICommunication& mpi, const std::vector<FileTask>& task
 #if MODE<2
 int get_file_ost(const string& file_path) {
     struct llapi_layout *layout = llapi_layout_get_by_path(file_path.c_str(), 0);
-    int ost_index;
+    uint64_t ost_index;
 
     if (layout == NULL) {
         cerr << "Error getting layout for file: " << file_path << endl;

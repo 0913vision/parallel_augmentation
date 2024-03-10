@@ -1,5 +1,6 @@
 hosts
 .vscode/
 images/
+output/
 library/lib.so
 library/__pycache__/
