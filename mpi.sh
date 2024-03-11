@@ -3,8 +3,8 @@
 #PBS -N mpi_2
 #PBS -q normal
 #PBS -A etc
-#PBS -l select=3:ncpus=5:mpiprocs=11
-#PBS -l walltime=00:03:00
+#PBS -l select=3:ncpus=4:mpiprocs=9
+#PBS -l walltime=00:02:00
 
 cd $PBS_O_WORKDIR
 

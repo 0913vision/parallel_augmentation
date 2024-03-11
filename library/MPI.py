@@ -37,7 +37,7 @@ class MPI:
         self.__char_recv.argtypes = [c_void_p, c_int, POINTER(c_char_p), c_int]
         self.__char_recv.restype = None
 
-        self.__barrier = self.__mpi_moudle.mpi_barrier
+        self.__barrier = self.__mpi_module.mpi_barrier
         self.__barrier.argtypes = None
         self.__barrier.restype = None
 
