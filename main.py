@@ -45,6 +45,7 @@ def main(vcpu: int, osts:int, image_path:str, save_path:str):
 
         mpi.barrier()
         loader.start()
+        loader.join()
 
         for p in processes:
             p.join()
