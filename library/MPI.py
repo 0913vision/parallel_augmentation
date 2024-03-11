@@ -37,6 +37,10 @@ class MPI:
         self.__char_recv.argtypes = [c_void_p, c_int, POINTER(c_char_p), c_int]
         self.__char_recv.restype = None
 
+        self.__barrier = self.__mpi_moudle.mpi_barrier
+        self.__barrier.argtypes = None
+        self.__barrier.restype = None
+
         self.__free_buffer = self.__mpi_module.free_buffer
         self.__free_buffer.argtypes = [c_void_p]
         self.__free_buffer.restype = None
@@ -69,3 +73,6 @@ class MPI:
     
     def int_send(self, dest, data):
         self.__int_send(self.__mpi_communication, c_int(int(dest)), c_int(int(data)))
+
+    def barrier(self):
+        self.__barrier()

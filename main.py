@@ -9,12 +9,14 @@ def main(vcpu: int, osts:int, image_path:str, save_path:str):
     num_workers = vcpu-1
 
     if mpi.rank == 0:
-        start = time.perf_counter()
+        
         master = Master.Master(mpi, image_path, osts)
+        mpi.barrier()
+
+        start = time.perf_counter()
         master.start()
 
-        for i in range(1, mpi.size):
-            _ = mpi.int_recv(i)
+        mpi.barrier()
         end = time.perf_counter()
         print(f"[MAKESPAN] {end-start} sec.")
     
@@ -22,14 +24,16 @@ def main(vcpu: int, osts:int, image_path:str, save_path:str):
         processes = []
         job_queues = [multiprocessing.SimpleQueue() for _ in range(num_workers)]
         
-        def run_loader(job_queues, mpi, num_workers):
-            loader = Loader.Loader(job_queues, mpi, num_workers)
-            loader.start()
+        # def run_loader(job_queues, mpi, num_workers):
+        #     loader = Loader.Loader(job_queues, mpi, num_workers)
+        #     loader.start()
 
-        loader_process = Process(target=run_loader, args=(job_queues, mpi, num_workers))
-        processes.append(loader_process)
-        loader_process.start()
+        # loader_process = Process(target=run_loader, args=(job_queues, mpi, num_workers))
+        # processes.append(loader_process)
+        # loader_process.start()
 
+
+        loader = Loader.Loader(job_queues, mpi, num_workers)
         def run_worker(job_queue, size, rank, ost, save_path):
             worker = Worker.Worker(job_queues[i], size, rank, ost, save_path)
             worker.start()
@@ -38,11 +42,14 @@ def main(vcpu: int, osts:int, image_path:str, save_path:str):
             p = Process(target=run_worker, args=(job_queues[i], mpi.size-1, mpi.rank, osts, save_path))
             processes.append(p)
             p.start()
-        
+
+        mpi.barrier()
+        loader.start()
+
         for p in processes:
             p.join()
 
-        mpi.int_send(0, 0)
+        mpi.barrier()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='simple distributed image augmentation job')

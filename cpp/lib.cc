@@ -96,6 +96,9 @@ class MPICommunication {
             *size = processor_name_size;
             return processor_name;
         }
+        void barrier() {
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
 
     private:
         int rank, size, processor_name_size, provided;
@@ -229,6 +232,9 @@ extern "C" {
     void mpi_char_recv(MPICommunication* mpi_comm, int source, void** data, int count) {
         *data = malloc(count);
         mpi_comm->recv(source, 0, *data, count, MPI_CHAR, NULL);
+    }
+    void mpi_barrier(MPICommunication* mpi_comm) {
+        mpi_comm->barrier();
     }
     int mpi_get_rank(MPICommunication* mpi_comm) {
         return mpi_comm->getRank();
