@@ -4,7 +4,7 @@
 #PBS -q exclusive
 #PBS -A etc
 #PBS -l select=4:ncpus=16:mpiprocs=4
-#PBS -l walltime=00:10:00
+#PBS -l walltime=03:00:00
 #PBS -m abe
 #PBS -M 0913vision@gmail.com
 #PBS -W sandbox=PRIVATE
