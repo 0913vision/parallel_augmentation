@@ -9,7 +9,7 @@ class Master:
         self.__directory_traversal.restype = None
         self.__directory = directory
         self.__num_osts = num_osts
-        self.__loaders = num_loaders
+        self.__num_loaders = num_loaders
         self.__stride = stride
 
     def start(self):
