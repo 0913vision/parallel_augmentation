@@ -3,9 +3,9 @@
 #PBS -N aug
 #PBS -q exclusive
 #PBS -A etc
-#PBS -l select=2:ncpus=8:mpiprocs=4
-#PBS -l walltime=00:02:00
-#PBS -m ae
+#PBS -l select=4:ncpus=8:mpiprocs=4
+#PBS -l walltime=00:10:00
+#PBS -m abe
 #PBS -M 0913vision@gmail.com
 
 cd $PBS_O_WORKDIR
