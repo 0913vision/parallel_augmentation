@@ -31,7 +31,7 @@ class Augmenter(threading.Thread):
             name_length = struct.unpack('i', header)[0]
             name = received_data[16:16+name_length].decode('utf-8')
             img_bytes = received_data[16+name_length:]
-            img = np.frombuffer(img_bytes, dtype=np.float32).reshape(img_shape)
+            img = np.frombuffer(img_bytes, dtype=np.float32).reshape((1,) + img_shape)
 
             datagen = ImageDataGenerator(
                 rotation_range=40,

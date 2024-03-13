@@ -3,7 +3,7 @@
 #PBS -N aug
 #PBS -q exclusive
 #PBS -A etc
-#PBS -l select=4:ncpus=8:mpiprocs=4
+#PBS -l select=4:ncpus=16:mpiprocs=4
 #PBS -l walltime=00:10:00
 #PBS -m abe
 #PBS -M 0913vision@gmail.com
@@ -19,4 +19,4 @@ pip3 install keras tensorflow scipy pillow
 
 echo "[shell] pip completed."
 
-mpirun -n 9 python3 ./main.py --processors 4 --loaders 4 --workers 2 --osts 24 --image_path ./images/ --save_path ./output 1>stdout 2>stderr
+mpirun -n 16 python3 ./main.py --processors 4 --loaders 4 --workers 2 --osts 24 --image_path ./images/ --save_path ./output 1>stdout 2>stderr
