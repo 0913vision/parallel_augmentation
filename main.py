@@ -5,6 +5,9 @@ import time
 def main(processors:int, loaders:int, workers: int, osts:int, image_path:str, save_path:str):
     mpi = MPI.MPI()
 
+    if mpi.size != processors+loaders*(workers+1):
+        raise Exception("MPI PARAMETER ERROR - WORLD SIZE")
+
     if mpi.rank == 0:
         master = Master.Master(mpi, image_path, osts, loaders, processors)
         mpi.barrier()
@@ -17,7 +20,8 @@ def main(processors:int, loaders:int, workers: int, osts:int, image_path:str, sa
         print(f"[MAKESPAN] {end-start} sec.")
 
     elif mpi.rank < processors:
-        pass # do nothing
+        mpi.barrier()
+        mpi.barrier()
     
     elif mpi.rank < processors+loaders:
         # loader part
