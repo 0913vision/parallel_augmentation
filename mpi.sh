@@ -7,6 +7,7 @@
 #PBS -l walltime=00:10:00
 #PBS -m abe
 #PBS -M 0913vision@gmail.com
+#PBS -W sandbox=PRIVATE
 
 cd $PBS_O_WORKDIR
 
@@ -18,5 +19,4 @@ pip3 install keras tensorflow scipy pillow
 
 echo "[shell] pip completed."
 
-mpirun -n 9 python3 ./main.py --processors 4 --loaders 4 --workers 2 --osts 24 --image_path ./images/ --save_path ./output
-
+mpirun -n 9 python3 ./main.py --processors 4 --loaders 4 --workers 2 --osts 24 --image_path ./images/ --save_path ./output 1>stdout 2>stderr

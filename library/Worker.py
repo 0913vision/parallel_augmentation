@@ -60,7 +60,7 @@ class Flusher(threading.Thread):
         self.ost = ost
         self.save_path = save_path
 
-        self.dir_path = os.path.join(save_path, ost)
+        self.dir_path = os.path.join(save_path, str(ost))
 
         try:
             os.makedirs(self.dir_path)
