@@ -76,7 +76,7 @@ class MPICommunication {
             MPI_Finalize();
         }
 
-        void send(int dest, int tag, void* data, int count, MPI_Datatype datatype) {
+        void send(int dest, int tag, const void* data, int count, MPI_Datatype datatype) {
             MPI_Send(data, count, datatype, dest, tag, MPI_COMM_WORLD);
         }
 
