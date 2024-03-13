@@ -3,7 +3,6 @@ import queue
 from PIL import Image
 import numpy as np
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import multiprocessing as mp
 import os
 from . import MPI
 import struct

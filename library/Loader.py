@@ -3,7 +3,6 @@ from . import MPI
 import threading
 import queue
 import os
-import multiprocessing as mp
 import struct
 
 class Communicator(threading.Thread):
