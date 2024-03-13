@@ -54,19 +54,18 @@ class Augmenter(threading.Thread):
             # self.job_queue.task_done()
 
 class Flusher(threading.Thread):
-    def __init__(self, complete_queue:queue.Queue, size:int, rank:int, num_osts:int, save_path:str):
+    def __init__(self, complete_queue:queue.Queue, ost:int, save_path:str):
         super().__init__()
         self.complete_queue = complete_queue
-        self.rank = rank
-        self.num_osts = num_osts
+        self.ost = ost
         self.save_path = save_path
 
-        for i in range(size):
-            dir_path = os.path.join(save_path, str(i))
-            try:
-                os.makedirs(dir_path)
-            except FileExistsError:
-                pass
+        self.dir_path = os.path.join(save_path, ost)
+
+        try:
+            os.makedirs(self.dir_path)
+        except FileExistsError:
+            pass
 
     def run(self):
         while True:
@@ -78,9 +77,8 @@ class Flusher(threading.Thread):
             # Save the augmented image to disk
             for i, img_array in enumerate(augmented_images):
                 img = Image.fromarray((img_array * 255).astype(np.uint8))
-                dir_path = os.path.join(self.save_path, str((self.rank-1)%self.num_osts))
                 file_name = f"{name}_augmented_image_{i}.png"
-                full_path = os.path.join(dir_path, file_name)
+                full_path = os.path.join(self.dir_path, file_name)
                 img.save(full_path)
 
 class Worker():
