@@ -8,11 +8,12 @@ from . import MPI
 import struct
 
 class Augmenter(threading.Thread):
-    def __init__(self, mpi:MPI.MPI, loader_rank:int, complete_queue:queue.Queue): #mpi, loader_rank, self.complete_queue
+    def __init__(self, mpi:MPI.MPI, loader_rank:int, complete_queue:queue.Queue, dups:int): #mpi, loader_rank, self.complete_queue
         super().__init__()
         self.mpi = mpi
         self.loader_rank = loader_rank
         self.complete_queue = complete_queue
+        self.dups = dups
 
     def run(self):
         while True:
@@ -45,7 +46,7 @@ class Augmenter(threading.Thread):
 
             # Perform image augmentation
             augmented_images = []
-            for i in range(50):
+            for i in range(self.dups):
                 for batch in datagen.flow(img, batch_size=1):
                     augmented_images.append(batch[0])
                     break  # Generate only one batch per image
@@ -84,9 +85,9 @@ class Flusher(threading.Thread):
                 img.save(full_path)
 
 class Worker():
-    def __init__(self, mpi:MPI.MPI, loader_rank:int, ost:int, save_path:str):
+    def __init__(self, mpi:MPI.MPI, loader_rank:int, ost:int, save_path:str, dups:int):
         self.complete_queue = queue.Queue()
-        self.augmenter = Augmenter(mpi, loader_rank, self.complete_queue)
+        self.augmenter = Augmenter(mpi, loader_rank, self.complete_queue, dups)
         self.flusher = Flusher(self.complete_queue, ost, save_path)
 
     def start(self):
