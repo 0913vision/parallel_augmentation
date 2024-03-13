@@ -32,7 +32,7 @@ class Fetcher(threading.Thread):
 
     def run(self):
         dest = 0
-        supported_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif'}
+        supported_extensions = {b'.jpg', b'.jpeg', b'.png', b'.bmp', b'.gif'}
         while True:
             file_list = self.network_queue.get()
             if file_list is None:
