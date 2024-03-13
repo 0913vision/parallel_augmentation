@@ -4,12 +4,13 @@ import threading
 import queue
 import os
 import multiprocessing as mp
+import struct
 
 class Communicator(threading.Thread):
-    def __init__(self, network_queue:queue.Queue, mpi:MPI.MPI):
+    def __init__(self, mpi:MPI.MPI, network_queue:queue.Queue):
         super().__init__()
-        self.network_queue = network_queue
         self.mpi = mpi
+        self.network_queue = network_queue
 
     def run(self):
         # Receive the file list
@@ -23,9 +24,10 @@ class Communicator(threading.Thread):
                 self.network_queue.put(tasks)
 
 class Fetcher(threading.Thread):
-    def __init__(self, network_queue:queue.Queue, job_queues:mp.SimpleQueue, num_workers:int):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int):
         super().__init__()
-        self.job_queues = job_queues
+        self.mpi = mpi
+        self.first_worker_rank = first_worker_rank
         self.network_queue = network_queue
         self.num_workers = num_workers
 
@@ -34,30 +36,37 @@ class Fetcher(threading.Thread):
         while True:
             file_list = self.network_queue.get()
             if file_list is None:
-                for jq in self.job_queues:
-                    jq.put((None,None))
+                for i in range(self.first_worker_rank, self.num_workers+self.first_worker_rank):
+                    self.int_send(i, -1)
                 break
             else:
                 for file in file_list:
                     if not file: # empty string handling
                         continue
                     # Distribute files to the job queues (with load balancing)
+
                     file = file.decode('utf-8')
                     name = os.path.basename(file)
-                    img = img_to_array(load_img(file))
-                    img = img.reshape((1,) + img.shape)
-                    self.job_queues[dest].put((name, img))
+                    img = img_to_array(load_img(file)).reshape((1,) + img.shape)
+                    img_bytes = img.tobytes()
+                    total_size = len(name) + len(img_bytes) + struct.calcsize('i')
+
+                    header = struct.pack('i', len(name))  # 4 bytes for name length
+                    message = header + name.encode('utf-8') + img_bytes
+                    
+                    self.mpi.int_send(dest+self.first_worker_rank, total_size)
+                    self.mpi.char_send(dest+self.first_worker_rank, message)
+                    # self.job_queues[dest].put((name, img))
+
                     if self.num_workers > 1:
                         dest = (dest+1) % self.num_workers
 
 class Loader():
-    def __init__(self, job_queues:mp.SimpleQueue, mpi:MPI.MPI, num_workers:int):
-        self.job_queues = job_queues
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, num_workers:int):
         self.network_queue = queue.Queue()
-        self.mpi = mpi
         self.num_workers = num_workers
-        self.communicator = Communicator(self.network_queue, self.mpi)
-        self.fetcher = Fetcher(self.network_queue, self.job_queues, self.num_workers)
+        self.communicator = Communicator(mpi, self.network_queue)
+        self.fetcher = Fetcher(mpi, first_worker_rank, self.network_queue, self.num_workers)
 
     def start(self):
         self.communicator.start()

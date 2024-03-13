@@ -5,21 +5,33 @@ import numpy as np
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import multiprocessing as mp
 import os
+from . import MPI
+import struct
 
 class Augmenter(threading.Thread):
-    def __init__(self, job_queue:mp.SimpleQueue, complete_queue:queue.Queue):
+    def __init__(self, mpi:MPI.MPI, loader_rank:int, complete_queue:queue.Queue): #mpi, loader_rank, self.complete_queue
         super().__init__()
-        self.job_queue = job_queue
+        self.mpi = mpi
+        self.loader_rank = loader_rank
         self.complete_queue = complete_queue
 
     def run(self):
         while True:
             # Fetch a job from the job queue
-            name, img = self.job_queue.get()
-            if img is None:  # A way to signal termination
-                self.complete_queue.put((None,None))
+            # name, img = self.job_queue.get()
+            size_or_terminate = self.mpi.int_recv(self.loader_rank)
+            if size_or_terminate == -1:
+                self.complete_queue.put((None, None))
                 break
             
+            received_data = self.mpi.char_recv(self.mpi_rank, size_or_terminate)
+
+            header = received_data[:4]
+            name_length = struct.unpack('i', header)[0]
+            name = received_data[4:4+name_length].decode('utf-8')
+            img_bytes = received_data[4+name_length:]
+            img = np.frombuffer(img_bytes, dtype=np.float32)
+
             datagen = ImageDataGenerator(
                 rotation_range=40,
                 width_shift_range=0.2,
@@ -73,11 +85,10 @@ class Flusher(threading.Thread):
                 img.save(full_path)
 
 class Worker():
-    def __init__(self, job_queue:mp.SimpleQueue, size:int, rank:int, osts:int, save_path:str):
-        self.job_queue = job_queue
+    def __init__(self, mpi:MPI.MPI, loader_rank:int, ost:int, save_path:str):
         self.complete_queue = queue.Queue()
-        self.augmenter = Augmenter(self.job_queue, self.complete_queue)
-        self.flusher = Flusher(self.complete_queue, size, rank, osts, save_path)
+        self.augmenter = Augmenter(mpi, loader_rank, self.complete_queue)
+        self.flusher = Flusher(self.complete_queue, ost, save_path)
 
     def start(self):
         self.augmenter.start()

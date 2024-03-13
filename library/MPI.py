@@ -74,5 +74,9 @@ class MPI:
     def int_send(self, dest, data):
         self.__int_send(self.__mpi_communication, c_int(int(dest)), c_int(int(data)))
 
+    def char_send(self, dest, data):
+        data_buffer = c_char_p(data.encode('utf-8'))
+        self.__char_send(self.__mpi_communication, c_int(dest), data_buffer, c_int(len(data)))
+
     def barrier(self):
         self.__barrier()

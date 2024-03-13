@@ -105,7 +105,7 @@ class MPICommunication {
         char processor_name[MPI_MAX_PROCESSOR_NAME];
 };
 
-void serialize_and_send(MPICommunication& mpi, const std::vector<FileTask>& tasks, int dest_rank) {
+void serialize_and_send(MPICommunication& mpi, const std::vector<FileTask>& tasks, int dest_rank, int stride) {
     int total_size = 0;
     for (const auto& task : tasks) {
         total_size += strlen(task.file_path) + 1;
@@ -118,8 +118,8 @@ void serialize_and_send(MPICommunication& mpi, const std::vector<FileTask>& task
         buffer_ptr += strlen(task.file_path) + 1;
     }
     
-    mpi.send(dest_rank+1, 0, &total_size, 1, MPI_INT);
-    mpi.send(dest_rank+1, 0, buffer, total_size, MPI_CHAR);
+    mpi.send(dest_rank+stride, 0, &total_size, 1, MPI_INT);
+    mpi.send(dest_rank+stride, 0, buffer, total_size, MPI_CHAR);
 
     delete[] buffer;
 }
@@ -140,8 +140,7 @@ int get_file_ost(const string& file_path) {
 }
 #endif
 
-void directory_traversal(MPICommunication* mpi, const char* directory_path, int num_osts) {
-    int localSize = mpi->getSize()-1;
+void directory_traversal(MPICommunication* mpi, const char* directory_path, int num_osts, int localSize, int stride) {
     vector<vector<FileTask>> task_queues(localSize);
     string path_string(directory_path);
     OSTWorkerMapper mapper(num_osts, localSize);
@@ -185,7 +184,7 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
         #endif
 
         if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
-            serialize_and_send(*mpi, task_queues[dest_rank], dest_rank);
+            serialize_and_send(*mpi, task_queues[dest_rank], dest_rank, stride);
             task_queues[dest_rank].clear();
         }
     }
@@ -195,7 +194,7 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
             #if LOG==1
             cout << i <<"th work start\n";
             #endif
-            serialize_and_send(*mpi, task_queues[i], i);
+            serialize_and_send(*mpi, task_queues[i], i, stride);
             task_queues[i].clear();
             #if LOG==1
             cout << i <<"th work end\n";
@@ -204,14 +203,14 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
     }
 
     int termination_signal = -1;
-    for (int i = 1; i <= localSize; ++i) {
-        mpi->send(i, 0, &termination_signal, 1, MPI_INT);
+    for (int i = 0; i < localSize; ++i) {
+        mpi->send(i+stride, 0, &termination_signal, 1, MPI_INT);
     }
 }
 
 extern "C" {
-    void directory_traversal_c(MPICommunication* mpi, const char* directory_path, int localSize) {
-        directory_traversal(mpi, directory_path, localSize);
+    void directory_traversal_c(MPICommunication* mpi, const char* directory_path, int num_osts, int num_loaders, int stride) {
+        directory_traversal(mpi, directory_path, num_osts, num_loaders, stride);
     }
 
     MPICommunication* create_mpi_communication() {
@@ -228,6 +227,9 @@ extern "C" {
         int ret;
         mpi_comm->recv(source, 0, &ret, 1, MPI_INT, NULL);
         return ret;
+    }
+    void mpi_char_send(MPICommunication* mpi_comm, int dest, const char* data, int count) {
+        mpi_comm->send(dest, 0, data, count, MPI_CHAR);
     }
     void mpi_char_recv(MPICommunication* mpi_comm, int source, void** data, int count) {
         *data = malloc(count);

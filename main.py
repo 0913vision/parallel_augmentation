@@ -4,13 +4,11 @@ from multiprocessing import Process
 import argparse
 import time
 
-def main(vcpu: int, osts:int, image_path:str, save_path:str):
+def main(processors:int, loaders:int, workers: int, osts:int, image_path:str, save_path:str):
     mpi = MPI.MPI()
-    num_workers = vcpu-1
 
     if mpi.rank == 0:
-        
-        master = Master.Master(mpi, image_path, osts)
+        master = Master.Master(mpi, image_path, osts, loaders, processors)
         mpi.barrier()
 
         start = time.perf_counter()
@@ -19,44 +17,35 @@ def main(vcpu: int, osts:int, image_path:str, save_path:str):
         mpi.barrier()
         end = time.perf_counter()
         print(f"[MAKESPAN] {end-start} sec.")
+
+    elif mpi.rank < processors:
+        pass # do nothing
     
-    else:
-        processes = []
-        job_queues = [multiprocessing.SimpleQueue() for _ in range(num_workers)]
-        
-        # def run_loader(job_queues, mpi, num_workers):
-        #     loader = Loader.Loader(job_queues, mpi, num_workers)
-        #     loader.start()
-
-        # loader_process = Process(target=run_loader, args=(job_queues, mpi, num_workers))
-        # processes.append(loader_process)
-        # loader_process.start()
-
-
-        loader = Loader.Loader(job_queues, mpi, num_workers)
-        def run_worker(job_queue, size, rank, ost, save_path):
-            worker = Worker.Worker(job_queues[i], size, rank, ost, save_path)
-            worker.start()
-
-        for i in range(num_workers):
-            p = Process(target=run_worker, args=(job_queues[i], mpi.size-1, mpi.rank, osts, save_path))
-            processes.append(p)
-            p.start()
-
+    elif mpi.rank < processors+loaders:
+        # loader part
+        first_worker_rank = processors+loaders+(mpi.rank-1)*workers
+        loader = Loader.Loader(mpi=mpi, first_worker_rank=first_worker_rank, num_workers=workers)
         mpi.barrier()
         loader.start()
         loader.join()
+        mpi.barrier()
 
-        for p in processes:
-            p.join()
-
+    else: # worker part
+        loader_rank = int((mpi.rank-(processors+loaders))/workers + processors)
+        worker = Worker.Worker(mpi=mpi, loader_rank=loader_rank, ost=loader_rank-processors, save_path=save_path)
+        mpi.barrier()
+        worker.start()
+        worker.join()
         mpi.barrier()
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description='simple distributed image augmentation job')
-    parser.add_argument('--vcpu', type=int, help='the number of processor in one node except master. (default(min): 2)', default=2)
+    parser.add_argument('--processors', type=int, help='the number of processors of a node. (default(min): 1)', default=1)
+    parser.add_argument('--loaders', type=int, help='the number of loaders. (default(min): 1)', default=1)
+    parser.add_argument('--workers', type=int, help='the number of workers of a loader. (default(min): 1)', default=1)
     parser.add_argument('--osts', type=int, help='the number of osts (default: 24)', default=24)
     parser.add_argument('--image_path', help='where your images are located', type=str, default='./images')
     parser.add_argument('--save_path', type=str, help='where you want the augmented images to be saved', default='./')
     args = parser.parse_args()
-    main(args.vcpu, args.osts, args.image_path, args.save_path)
+    main(args.processors, args.loaders, args.workers, args.osts, args.image_path, args.save_path)
