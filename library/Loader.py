@@ -36,7 +36,7 @@ class Fetcher(threading.Thread):
             file_list = self.network_queue.get()
             if file_list is None:
                 for i in range(self.first_worker_rank, self.num_workers+self.first_worker_rank):
-                    self.int_send(i, -1)
+                    self.mpi.int_send(i, -1)
                 break
             else:
                 for file in file_list:
@@ -46,12 +46,15 @@ class Fetcher(threading.Thread):
 
                     file = file.decode('utf-8')
                     name = os.path.basename(file)
-                    img = img_to_array(load_img(file)).reshape((1,) + img.shape)
+                    img = img_to_array(load_img(file))
+                    # img = img.reshape((1,) + img.shape)
+                    img_shape = img.shape
                     img_bytes = img.tobytes()
-                    total_size = len(name) + len(img_bytes) + struct.calcsize('i')
 
+                    shape_header = struct.pack('iii', *img_shape)
                     header = struct.pack('i', len(name))  # 4 bytes for name length
-                    message = header + name.encode('utf-8') + img_bytes
+                    message = shape_header + header + name.encode('utf-8') + img_bytes
+                    total_size = struct.calcsize('iii') + struct.calcsize('i') + len(name) + len(img_bytes)
                     
                     self.mpi.int_send(dest+self.first_worker_rank, total_size)
                     self.mpi.char_send(dest+self.first_worker_rank, message)

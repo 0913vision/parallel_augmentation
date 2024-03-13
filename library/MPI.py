@@ -33,6 +33,10 @@ class MPI:
         self.__int_recv.argtypes = [c_void_p, c_int]
         self.__int_recv.restype = c_int
 
+        self.__char_send = self.__mpi_module.mpi_char_send
+        self.__char_send.argtypes = [c_void_p, c_int, c_char_p, c_int]
+        self.__char_send.restype = None
+
         self.__char_recv = self.__mpi_module.mpi_char_recv
         self.__char_recv.argtypes = [c_void_p, c_int, POINTER(c_char_p), c_int]
         self.__char_recv.restype = None
@@ -75,8 +79,17 @@ class MPI:
         self.__int_send(self.__mpi_communication, c_int(int(dest)), c_int(int(data)))
 
     def char_send(self, dest, data):
-        data_buffer = c_char_p(data.encode('utf-8'))
-        self.__char_send(self.__mpi_communication, c_int(dest), data_buffer, c_int(len(data)))
+        if isinstance(data, str):
+            data_buffer = c_char_p(data.encode('utf-8'))
+            data_length = len(data_buffer)
+
+        elif isinstance(data, bytes):
+            data_buffer = c_char_p(data)
+            data_length = len(data)
+        else:
+            raise ValueError("Data must be str or bytes")
+        
+        self.__char_send(self.__mpi_communication, c_int(dest), data_buffer, c_int(data_length))
 
     def barrier(self):
         self.__barrier()

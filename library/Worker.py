@@ -23,13 +23,15 @@ class Augmenter(threading.Thread):
                 self.complete_queue.put((None, None))
                 break
             
-            received_data = self.mpi.char_recv(self.mpi_rank, size_or_terminate)
+            received_data = self.mpi.char_recv(self.loader_rank, size_or_terminate)
 
-            header = received_data[:4]
+            shape_header = received_data[:12]
+            img_shape = struct.unpack('iii', shape_header)
+            header = received_data[12:16]
             name_length = struct.unpack('i', header)[0]
-            name = received_data[4:4+name_length].decode('utf-8')
-            img_bytes = received_data[4+name_length:]
-            img = np.frombuffer(img_bytes, dtype=np.float32)
+            name = received_data[16:16+name_length].decode('utf-8')
+            img_bytes = received_data[16+name_length:]
+            img = np.frombuffer(img_bytes, dtype=np.float32).reshape(img_shape)
 
             datagen = ImageDataGenerator(
                 rotation_range=40,

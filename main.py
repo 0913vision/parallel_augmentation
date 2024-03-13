@@ -25,7 +25,7 @@ def main(processors:int, loaders:int, workers: int, osts:int, image_path:str, sa
     
     elif mpi.rank < processors+loaders:
         # loader part
-        first_worker_rank = processors+loaders+(mpi.rank-1)*workers
+        first_worker_rank = processors+loaders+(mpi.rank-processors)*workers
         loader = Loader.Loader(mpi=mpi, first_worker_rank=first_worker_rank, num_workers=workers)
         mpi.barrier()
         loader.start()
