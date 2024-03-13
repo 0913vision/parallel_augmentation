@@ -19,4 +19,4 @@ pip3 install keras tensorflow scipy pillow
 
 echo "[shell] pip completed."
 
-mpirun -n 16 python3 ./main.py --processors 4 --loaders 4 --workers 2 --osts 24 --image_path ./images/ --save_path ./output 1>stdout 2>stderr
+mpirun -n 16 python3 ./main.py --processors 4 --loaders 4 --workers 2 --osts 24 --im    age_path /home01/sample_data/nurion_stripe/tiny-imagenet-200/ --save_path /home01/sample_data/nurion_stripe/tiny-imagenet-augmented/ 1>stdout 2>stderr

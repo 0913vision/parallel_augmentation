@@ -32,6 +32,7 @@ class Fetcher(threading.Thread):
 
     def run(self):
         dest = 0
+        supported_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif'}
         while True:
             file_list = self.network_queue.get()
             if file_list is None:
@@ -42,8 +43,11 @@ class Fetcher(threading.Thread):
                 for file in file_list:
                     if not file: # empty string handling
                         continue
-                    # Distribute files to the job queues (with load balancing)
+                    _, ext = os.path.splitext(file)
+                    if ext.lower() not in supported_extensions:
+                        continue
 
+                    # Distribute files (with load balancing)
                     file = file.decode('utf-8')
                     name = os.path.basename(file)
                     img = img_to_array(load_img(file))
