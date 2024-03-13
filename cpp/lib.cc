@@ -155,7 +155,7 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
     int dum = 0;
     #endif
 
-    for (const auto& dir_entry : directory_iterator(directory_path)) {
+    for (const auto& dir_entry : recursive_directory_iterator(directory_path)) {
         if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) {
             continue;
         }
