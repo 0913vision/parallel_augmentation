@@ -11,6 +11,8 @@
 
 cd $PBS_O_WORKDIR
 
+DIR="/home01/sample_data/nurion_stripe/tiny-imagenet-augmented"
+
 module purge
 module load craype-x86-skylake gcc/8.3.0 openmpi/3.1.0 python/3.9.5
 
@@ -19,4 +21,16 @@ pip3 install keras tensorflow scipy pillow
 
 echo "[shell] pip completed."
 
-mpirun -n 108 python3 ./main.py --processors 12 --loaders 24 --workers 3 --osts 24 --dups 10 --image_path /home01/sample_data/nurion_stripe/tiny-imagenet-200/ --save_path /home01/sample_data/nurion_stripe/tiny-imagenet-augmented/ 1>stdout 2>stderr
+for j in {1..10}
+do
+
+mpirun -n 108 python3 ./main.py --processors 12 --loaders 24 --workers 3 --osts 24 --dups 8 --image_path /home01/sample_data/nurion_stripe/tiny-imagenet-200/ --save_path /home01/sample_data/nurion_stripe/tiny-imagenet-augmented/ 1>>stdout 2>>stderr
+
+rsync -a --delete /scratch/s5104a22/empty_dir/ /home01/sample_data/nurion_stripe/tiny-imagenet-augmented/
+
+for i in {0..23}
+do
+    mkdir $DIR/$i                # Create directory with the name as the current number
+    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
+done
+done
