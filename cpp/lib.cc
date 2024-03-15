@@ -143,15 +143,18 @@ int get_file_ost(const string& file_path) {
 void directory_traversal(MPICommunication* mpi, const char* directory_path, int num_osts, int localSize, int stride) {
     vector<vector<FileTask>> task_queues(localSize);
     string path_string(directory_path);
-    OSTWorkerMapper mapper(num_osts, localSize);
 
-    #if MODE==1
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dis(0, num_osts-1);
+    #if MODE==0
+    OSTWorkerMapper mapper(num_osts, localSize);
     #endif
 
-    #if MODE==2
+    // #if MODE==1
+    // std::random_device rd;
+    // std::mt19937 gen(rd());
+    // std::uniform_int_distribution<int> dis(0, num_osts-1);
+    // #endif
+
+    #if MODE>0
     int dum = 0;
     #endif
 
@@ -160,19 +163,26 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
             continue;
         }
 
-        #if MODE==0
+        #if MODE<2
         int ost = get_file_ost(dir_entry.path().string());
         #endif
 
-        #if MODE==1
-        int ost = dis(gen);
-        #endif
+        // #if MODE==1
+        // int ost = dis(gen);
+        // #endif
         
         #if MODE==2
         int ost = dum++ % num_osts;
         #endif
         
+        #if MODE==0
         int dest_rank = mapper.getWorkerForOST(ost);
+        #endif
+
+        #if MODE==1
+        int dest_rank = dum++ % localSize;
+        #endif
+
 
         FileTask task;
         strncpy(task.file_path, dir_entry.path().string().c_str(), MAX_FILE_PATH_LEN);
