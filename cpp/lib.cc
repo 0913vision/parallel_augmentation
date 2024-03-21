@@ -175,8 +175,8 @@ public:
             }
             dataList.push_back(data);
         }
-    }
 #endif
+    }
     ~Traverser() {}
 
     void catalog_traversal() {
@@ -186,7 +186,6 @@ public:
 #if MODE==1
         int dum = 0;
 #endif
-
         for(auto& data : dataList) {
 #if MODE==0
             int dest_rank = mapper.getWorkerForOST(data.ostNumber);
@@ -233,9 +232,7 @@ public:
 #endif
 
         for (const auto& dir_entry : recursive_directory_iterator(path)) {
-            if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) {
-                continue;
-            }
+            if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) continue;
 
 #if TIME==1
             sum += mpi->wtime() - start;

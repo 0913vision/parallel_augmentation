@@ -15,4 +15,4 @@ class Master:
         self.__trav = create_traverser_c(mpi, path, num_osts, num_loaders, stride)
 
     def start(self):
-        self.__traverser_start()
+        self.__traverser_start(self.__trav)
