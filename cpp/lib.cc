@@ -7,19 +7,9 @@
 #include <mpi.h>
 #include <queue>
 #include <cstdio>
-
-#if CATALOG==1
 #include <fstream>
 #include <string>
-#endif
-
-#if MODE==1
-#include <random>
-#endif
-
-#if MODE==0
 #include "lustre/lustreapi.h"
-#endif
 
 using namespace std;
 using namespace std::filesystem;
@@ -194,7 +184,7 @@ public:
             int dest_rank = dum++ % localSize;
 #endif
             FileTask task;
-            strncpy(task.file_path, data.filename.string().c_str(), MAX_FILE_PATH_LEN);
+            strncpy(task.file_path, data.filename.c_str(), MAX_FILE_PATH_LEN);
             task.file_path[MAX_FILE_PATH_LEN - 1] = '\0';
             task_queues[dest_rank].push_back(task);
 
