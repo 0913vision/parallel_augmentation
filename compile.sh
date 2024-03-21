@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MODE=$1 #0(FC) 1(OC)
+MODE=$1 #0(OC) 1(FC)
 CATALOG=$2 # 카탈로그 사용여부
 LOG=$3 # 로그출력여부
 TIME=$4 # metadata 시간측정여부
