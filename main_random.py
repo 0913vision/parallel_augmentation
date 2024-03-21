@@ -1,6 +1,8 @@
 from library import Loader, Worker_random, Master, MPI
 import argparse
 import time
+#import os
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 def main(processors:int, loaders:int, workers: int, osts:int, dups:int, image_path:str, save_path:str):
     mpi = MPI.MPI()

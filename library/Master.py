@@ -12,7 +12,6 @@ class Master:
         self.__traverser_start.argtypes = [c_void_p]
         self.__traverser_start.restype = None
 
-        self.__trav = create_traverser_c(mpi, path, num_osts, num_loaders, stride)
-
+        self.__trav = create_traverser_c(mpi.get_communicator(), path.encode('utf-8'), num_osts, num_loaders, stride)
     def start(self):
         self.__traverser_start(self.__trav)

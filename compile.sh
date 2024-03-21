@@ -21,8 +21,4 @@ if [ -z "$TIME" ]; then
     TIME=0
 fi
 
-if [ "$MODE" -le 1 ]; then
-    mpic++ -std=c++17 -fpermissive -shared -o ./library/lib.so -fPIC -DMODE=$MODE -DCATALOG=$CATALOG -DLOG=$LOG -DTIME=$TIME ./cpp/lib.cc -llustreapi -lstdc++fs
-else
-    mpic++ -std=c++17 -shared -o ./library/lib.so -fPIC -DMODE=$MODE -DCATALOG=$CATALOG -DLOG=$LOG -DTIME=$TIME ./cpp/lib.cc -lstdc++fs
-fi
+mpic++ -std=c++17 -fpermissive -shared -o ./library/lib.so -fPIC -DMODE=$MODE -DCATALOG=$CATALOG -DLOG=$LOG -DTIME=$TIME ./cpp/lib.cc -llustreapi -lstdc++fs

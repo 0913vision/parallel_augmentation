@@ -18,7 +18,7 @@ module purge
 module load craype-x86-skylake gcc/8.3.0 openmpi/3.1.0 python/3.9.5
 
 pip3 install urllib3==1.26.15
-pip3 install keras tensorflow scipy pillow
+pip3 install keras tensorflow-cpu scipy pillow
 
 echo "[shell] pip completed."
 
@@ -57,7 +57,7 @@ do
 
 # random
 
-./compile.sh 1 0 1
+./compile.sh 1 0 0 0
 echo "random $j"
 echo "${np_array[j]} mpi processors, and ${loader_array[j]} loaders."
 
@@ -73,7 +73,7 @@ do
     lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
 done
 
-if [ $j < 4 ]; then
+if [ $j -lt 4 ]; then
 sleep 10m
 fi
 
