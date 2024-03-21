@@ -82,10 +82,10 @@ class Flusher(threading.Thread):
             for i, img_array in enumerate(augmented_images):
                 img = Image.fromarray((img_array * 255).astype(np.uint8))
                 file_name = f"{name}_augmented_image_{i}.png"
-                random_ost = str(random.randrange(0,24))
-                full_path = os.path.join(*[self.save_path, random_ost, file_name])
-                #full_path = os.path.join(self.dir_path, file_name)
-                #img.save(full_path)
+                #random_ost = str(random.randrange(0,24))
+                #full_path = os.path.join(*[self.save_path, random_ost, file_name])
+                full_path = os.path.join(self.dir_path, file_name)
+                img.save(full_path)
 
 class Worker():
     def __init__(self, mpi:MPI.MPI, loader_rank:int, ost:int, save_path:str, dups:int):

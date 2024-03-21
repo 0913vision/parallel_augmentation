@@ -6,6 +6,12 @@
 #include <cstring>
 #include <mpi.h>
 #include <queue>
+#include <cstdio>
+
+#if CATALOG==1
+#include <fstream>
+#include <string>
+#endif
 
 #if MODE==1
 #include <random>
@@ -13,10 +19,6 @@
 
 #if MODE<2
 #include "lustre/lustreapi.h"
-#endif
-
-#if MODE==2
-#include <cstdio>
 #endif
 
 using namespace std;
@@ -28,6 +30,11 @@ using namespace std::filesystem;
 struct FileTask {
     char file_path[MAX_FILE_PATH_LEN];
 };
+
+struct CatalogData {
+    string filename;
+    int ostNumber;
+}
 
 class OSTWorkerMapper {
 private:
@@ -100,6 +107,10 @@ class MPICommunication {
             MPI_Barrier(MPI_COMM_WORLD);
         }
 
+        double wtime() {
+            return MPI_Wtime();
+        }
+
     private:
         int rank, size, processor_name_size, provided;
         char processor_name[MPI_MAX_PROCESSOR_NAME];
@@ -140,13 +151,60 @@ int get_file_ost(const string& file_path) {
 }
 #endif
 
+
+void catalog_traversal(mpi, directory_path, num_osts, num_loaders, stride) {
+    vector<CatalogData> dataList;
+    ifstream file("img_catalog.txt");
+
+    ios::sync_with_stdio(false);
+
+    string line;
+    while (getline(file, line)) {
+        CatalogData data;
+        istringstream iss(line);
+        if (!(iss >> data.filename >> data.ostNumber)) {
+            break;
+        }
+        dataList.push_back(data);
+    }
+
+    vector<vector<FileTask>> task_queues(localSize);
+    OSTWorkerMapper mapper(num_osts, localSize);
+
+    for(auto& data : dataList) {
+
+        int dest_rank = mapper.getWorkerForOST(data.ost);
+        FileTask task;
+        strncpy(task.file_path, data.filename.string().c_str(), MAX_FILE_PATH_LEN);
+        task.file_path[MAX_FILE_PATH_LEN - 1] = '\0';
+        task_queues[dest_rank].push_back(task);
+
+        if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
+            serialize_and_send(*mpi, task_queues[dest_rank], dest_rank, stride);
+            task_queues[dest_rank].clear();
+        }
+    }
+
+    for (int i = 0; i < localSize; ++i) {
+        if (!task_queues[i].empty()) {
+            serialize_and_send(*mpi, task_queues[i], i, stride);
+            task_queues[i].clear();
+        }
+    }
+
+    int termination_signal = -1;
+    for (int i = 0; i < localSize; ++i) {
+        mpi->send(i+stride, 0, &termination_signal, 1, MPI_INT);
+    }
+}
+
 void directory_traversal(MPICommunication* mpi, const char* directory_path, int num_osts, int localSize, int stride) {
     vector<vector<FileTask>> task_queues(localSize);
-    string path_string(directory_path);
-
     #if MODE==0
     OSTWorkerMapper mapper(num_osts, localSize);
     #endif
+
+    string path_string(directory_path);
 
     // #if MODE==1
     // std::random_device rd;
@@ -154,18 +212,28 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
     // std::uniform_int_distribution<int> dis(0, num_osts-1);
     // #endif
 
-    #if MODE>0
+    #if MODE==1
     int dum = 0;
     #endif
+
+	#if TIME==1
+    	double start;
+	double sum=0;
+    	start = mpi->wtime();
+	#endif
 
     for (const auto& dir_entry : recursive_directory_iterator(directory_path)) {
         if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) {
             continue;
         }
 
-        #if MODE<2
+	#if TIME==1
+	sum += mpi->wtime() - start;
+	#endif
+
+	#if MODE==0
         int ost = get_file_ost(dir_entry.path().string());
-        #endif
+	#endif
 
         // #if MODE==1
         // int ost = dis(gen);
@@ -197,7 +265,11 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
             serialize_and_send(*mpi, task_queues[dest_rank], dest_rank, stride);
             task_queues[dest_rank].clear();
         }
+	#if TIME==1
+	start = mpi->wtime();
+	#endif
     }
+    #endif
 
     for (int i = 0; i < localSize; ++i) {
         if (!task_queues[i].empty()) {
@@ -216,11 +288,19 @@ void directory_traversal(MPICommunication* mpi, const char* directory_path, int 
     for (int i = 0; i < localSize; ++i) {
         mpi->send(i+stride, 0, &termination_signal, 1, MPI_INT);
     }
+#if TIME==1
+    cout << "metadata(dir) io : " << sum << endl;
+#endif
 }
 
 extern "C" {
     void directory_traversal_c(MPICommunication* mpi, const char* directory_path, int num_osts, int num_loaders, int stride) {
+#if CATALOG==0
         directory_traversal(mpi, directory_path, num_osts, num_loaders, stride);
+#endif
+#if CATALOG==1
+        catalog_traversal(mpi, directory_path, num_osts, num_loaders, stride);
+#endif
     }
 
     MPICommunication* create_mpi_communication() {
