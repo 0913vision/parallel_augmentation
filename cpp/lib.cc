@@ -17,7 +17,7 @@
 #include <random>
 #endif
 
-#if MODE<2
+#if MODE==0
 #include "lustre/lustreapi.h"
 #endif
 
@@ -34,7 +34,7 @@ struct FileTask {
 struct CatalogData {
     string filename;
     int ostNumber;
-}
+};
 
 class OSTWorkerMapper {
 private:
@@ -116,190 +116,195 @@ class MPICommunication {
         char processor_name[MPI_MAX_PROCESSOR_NAME];
 };
 
-void serialize_and_send(MPICommunication& mpi, const std::vector<FileTask>& tasks, int dest_rank, int stride) {
-    int total_size = 0;
-    for (const auto& task : tasks) {
-        total_size += strlen(task.file_path) + 1;
-    }
+class Traverser {
+private:
+    vector<CatalogData> dataList;
+    MPICommunication* mpi;
+    const char* path;
+    int num_osts;
+    int localSize;
+    int stride;
 
-    char* buffer = new char[total_size];
-    char* buffer_ptr = buffer;
-    for (const auto& task : tasks) {
-        strcpy(buffer_ptr, task.file_path);
-        buffer_ptr += strlen(task.file_path) + 1;
+    void serialize_and_send(const std::vector<FileTask>& tasks, int dest_rank) {
+        int total_size = 0;
+        for (const auto& task : tasks) {
+            total_size += strlen(task.file_path) + 1;
+        }
+
+        char* buffer = new char[total_size];
+        char* buffer_ptr = buffer;
+        for (const auto& task : tasks) {
+            strcpy(buffer_ptr, task.file_path);
+            buffer_ptr += strlen(task.file_path) + 1;
+        }
+        
+        mpi->send(dest_rank+stride, 0, &total_size, 1, MPI_INT);
+        mpi->send(dest_rank+stride, 0, buffer, total_size, MPI_CHAR);
+
+        delete[] buffer;
     }
     
-    mpi.send(dest_rank+stride, 0, &total_size, 1, MPI_INT);
-    mpi.send(dest_rank+stride, 0, buffer, total_size, MPI_CHAR);
+    int get_file_ost(const string& file_path) {
+        struct llapi_layout *layout = llapi_layout_get_by_path(file_path.c_str(), 0);
+        uint64_t ost_index;
 
-    delete[] buffer;
-}
+        if (layout == NULL) {
+            cerr << "Error getting layout for file: " << file_path << endl;
+            return -1;
+        }
 
-#if MODE<2
-int get_file_ost(const string& file_path) {
-    struct llapi_layout *layout = llapi_layout_get_by_path(file_path.c_str(), 0);
-    uint64_t ost_index;
-
-    if (layout == NULL) {
-        cerr << "Error getting layout for file: " << file_path << endl;
-        return -1;
+        llapi_layout_comp_use(layout, 1);
+        llapi_layout_ost_index_get(layout, 0, &ost_index);
+        return ost_index;
     }
 
-    llapi_layout_comp_use(layout, 1);
-    llapi_layout_ost_index_get(layout, 0, &ost_index);
-    return ost_index;
-}
+public:
+    Traverser(MPICommunication* mpi, const char* path, int num_osts, int num_loaders, int stride) 
+    : mpi(mpi), path(path), num_osts(num_osts), localSize(num_loaders), stride(stride) {
+#if CATALOG==1
+        ifstream file(path);
+
+        ios::sync_with_stdio(false);
+
+        string line;
+        while (getline(file, line)) {
+            CatalogData data;
+            istringstream iss(line);
+            if (!(iss >> data.filename >> data.ostNumber)) {
+                break;
+            }
+            dataList.push_back(data);
+        }
+    }
+#endif
+    ~Traverser() {}
+
+    void catalog_traversal() {
+        OSTWorkerMapper mapper(num_osts, localSize);
+        vector<vector<FileTask>> task_queues(localSize);
+
+#if MODE==1
+        int dum = 0;
 #endif
 
+        for(auto& data : dataList) {
+#if MODE==0
+            int dest_rank = mapper.getWorkerForOST(data.ostNumber);
+#endif
+#if MODE==1
+            int dest_rank = dum++ % localSize;
+#endif
+            FileTask task;
+            strncpy(task.file_path, data.filename.string().c_str(), MAX_FILE_PATH_LEN);
+            task.file_path[MAX_FILE_PATH_LEN - 1] = '\0';
+            task_queues[dest_rank].push_back(task);
 
-void catalog_traversal(mpi, directory_path, num_osts, num_loaders, stride) {
-    vector<CatalogData> dataList;
-    ifstream file("img_catalog.txt");
-
-    ios::sync_with_stdio(false);
-
-    string line;
-    while (getline(file, line)) {
-        CatalogData data;
-        istringstream iss(line);
-        if (!(iss >> data.filename >> data.ostNumber)) {
-            break;
+            if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
+                serialize_and_send(task_queues[dest_rank], dest_rank);
+                task_queues[dest_rank].clear();
+            }
         }
-        dataList.push_back(data);
-    }
 
-    vector<vector<FileTask>> task_queues(localSize);
-    OSTWorkerMapper mapper(num_osts, localSize);
+        for (int i = 0; i < localSize; ++i) {
+            if (!task_queues[i].empty()) {
+                serialize_and_send(task_queues[i], i);
+                task_queues[i].clear();
+            }
+        }
 
-    for(auto& data : dataList) {
-
-        int dest_rank = mapper.getWorkerForOST(data.ost);
-        FileTask task;
-        strncpy(task.file_path, data.filename.string().c_str(), MAX_FILE_PATH_LEN);
-        task.file_path[MAX_FILE_PATH_LEN - 1] = '\0';
-        task_queues[dest_rank].push_back(task);
-
-        if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
-            serialize_and_send(*mpi, task_queues[dest_rank], dest_rank, stride);
-            task_queues[dest_rank].clear();
+        int termination_signal = -1;
+        for (int i = 0; i < localSize; ++i) {
+            mpi->send(i+stride, 0, &termination_signal, 1, MPI_INT);
         }
     }
 
-    for (int i = 0; i < localSize; ++i) {
-        if (!task_queues[i].empty()) {
-            serialize_and_send(*mpi, task_queues[i], i, stride);
-            task_queues[i].clear();
-        }
-    }
+    void directory_traversal() {
+        vector<vector<FileTask>> task_queues(localSize);
+        OSTWorkerMapper mapper(num_osts, localSize);
 
-    int termination_signal = -1;
-    for (int i = 0; i < localSize; ++i) {
-        mpi->send(i+stride, 0, &termination_signal, 1, MPI_INT);
-    }
-}
+#if MODE==1
+        int dum = 0;
+#endif
 
-void directory_traversal(MPICommunication* mpi, const char* directory_path, int num_osts, int localSize, int stride) {
-    vector<vector<FileTask>> task_queues(localSize);
-    #if MODE==0
-    OSTWorkerMapper mapper(num_osts, localSize);
-    #endif
-
-    string path_string(directory_path);
-
-    // #if MODE==1
-    // std::random_device rd;
-    // std::mt19937 gen(rd());
-    // std::uniform_int_distribution<int> dis(0, num_osts-1);
-    // #endif
-
-    #if MODE==1
-    int dum = 0;
-    #endif
-
-	#if TIME==1
-    	double start;
-	double sum=0;
-    	start = mpi->wtime();
-	#endif
-
-    for (const auto& dir_entry : recursive_directory_iterator(directory_path)) {
-        if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) {
-            continue;
-        }
-
-	#if TIME==1
-	sum += mpi->wtime() - start;
-	#endif
-
-	#if MODE==0
-        int ost = get_file_ost(dir_entry.path().string());
-	#endif
-
-        // #if MODE==1
-        // int ost = dis(gen);
-        // #endif
-        
-        #if MODE==2
-        int ost = dum++ % num_osts;
-        #endif
-        
-        #if MODE==0
-        int dest_rank = mapper.getWorkerForOST(ost);
-        #endif
-
-        #if MODE==1
-        int dest_rank = dum++ % localSize;
-        #endif
-
-
-        FileTask task;
-        strncpy(task.file_path, dir_entry.path().string().c_str(), MAX_FILE_PATH_LEN);
-        task.file_path[MAX_FILE_PATH_LEN - 1] = '\0';
-
-        task_queues[dest_rank].push_back(task);
-        #if LOG==1
-        cout << dest_rank << " " << task.file_path << endl;
-        #endif
-
-        if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
-            serialize_and_send(*mpi, task_queues[dest_rank], dest_rank, stride);
-            task_queues[dest_rank].clear();
-        }
-	#if TIME==1
-	start = mpi->wtime();
-	#endif
-    }
-    #endif
-
-    for (int i = 0; i < localSize; ++i) {
-        if (!task_queues[i].empty()) {
-            #if LOG==1
-            cout << i <<"th work start\n";
-            #endif
-            serialize_and_send(*mpi, task_queues[i], i, stride);
-            task_queues[i].clear();
-            #if LOG==1
-            cout << i <<"th work end\n";
-            #endif
-        }
-    }
-
-    int termination_signal = -1;
-    for (int i = 0; i < localSize; ++i) {
-        mpi->send(i+stride, 0, &termination_signal, 1, MPI_INT);
-    }
 #if TIME==1
-    cout << "metadata(dir) io : " << sum << endl;
+        double start;
+        double sum=0;
+        start = mpi->wtime();
 #endif
-}
+
+        for (const auto& dir_entry : recursive_directory_iterator(path)) {
+            if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) {
+                continue;
+            }
+
+#if TIME==1
+            sum += mpi->wtime() - start;
+#endif
+
+#if MODE==0
+            int ost = get_file_ost(dir_entry.path().string());
+#endif
+            
+#if MODE==0
+            int dest_rank = mapper.getWorkerForOST(ost);
+#endif
+
+#if MODE==1
+            int dest_rank = dum++ % localSize;
+#endif
+            FileTask task;
+            strncpy(task.file_path, dir_entry.path().string().c_str(), MAX_FILE_PATH_LEN);
+            task.file_path[MAX_FILE_PATH_LEN - 1] = '\0';
+
+            task_queues[dest_rank].push_back(task);
+#if LOG==1
+            cout << dest_rank << " " << task.file_path << endl;
+#endif
+
+            if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
+                serialize_and_send(task_queues[dest_rank], dest_rank);
+                task_queues[dest_rank].clear();
+            }
+
+#if TIME==1
+            start = mpi->wtime();
+#endif
+        }
+
+        for (int i = 0; i < localSize; ++i) {
+            if (!task_queues[i].empty()) {
+#if LOG==1
+                cout << i <<"th work start\n";
+#endif
+                serialize_and_send(task_queues[i], i);
+                task_queues[i].clear();
+#if LOG==1
+                cout << i <<"th work end\n";
+#endif
+            }
+        }
+
+        int termination_signal = -1;
+        for (int i = 0; i < localSize; ++i) {
+            mpi->send(i+stride, 0, &termination_signal, 1, MPI_INT);
+        }
+#if TIME==1
+        cout << "metadata(dir) io : " << sum << endl;
+#endif
+    }
+};
+
 
 extern "C" {
-    void directory_traversal_c(MPICommunication* mpi, const char* directory_path, int num_osts, int num_loaders, int stride) {
+    Traverser* create_traverser_c(MPICommunication* mpi, const char* path, int num_osts, int num_loaders, int stride) {
+        return new Traverser(mpi, path, num_osts, num_loaders, stride);
+    }
+    void traverser_start(Traverser* trav) {
 #if CATALOG==0
-        directory_traversal(mpi, directory_path, num_osts, num_loaders, stride);
+        trav->directory_traversal();
 #endif
 #if CATALOG==1
-        catalog_traversal(mpi, directory_path, num_osts, num_loaders, stride);
+        trav->catalog_traversal();
 #endif
     }
 
