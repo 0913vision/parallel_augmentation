@@ -93,3 +93,6 @@ class MPI:
 
     def barrier(self):
         self.__barrier()
+
+    def get_communicator(self):
+        return self.__mpi_communication
