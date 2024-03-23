@@ -1,6 +1,7 @@
 #include <iostream>
 #include <filesystem>
 #include <chrono>
+#include <random>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
@@ -9,6 +10,7 @@
 #include <cstdio>
 #include <fstream>
 #include <string>
+#include <ctime>
 #include "lustre/lustreapi.h"
 
 using namespace std;
@@ -116,6 +118,9 @@ private:
     int stride;
     OSTWorkerMapper mapper;
     vector<vector<FileTask>> task_queues;
+    random_device rd;
+    mt19937 gen;
+    uniform_int_distribution<int> dis;
 
     void serialize_and_send(const std::vector<FileTask>& tasks, int dest_rank) {
         int total_size = 0;
@@ -153,7 +158,7 @@ private:
 public:
     Traverser(MPICommunication* mpi, const char* path, int num_osts, int num_loaders, int stride) 
     : mpi(mpi), path(path), num_osts(num_osts), localSize(num_loaders), stride(stride), 
-      mapper(num_osts, num_loaders), task_queues(num_loaders) {
+      mapper(num_osts, num_loaders), task_queues(num_loaders), gen(rd()), dis(0,num_loaders) {
 #if CATALOG==1
         ifstream file(path);
 
@@ -169,15 +174,12 @@ public:
             dataList.push_back(data);
         }
 
-#if MODE==1
-        int dum = 0;
-#endif
         for(auto& data : dataList) {
 #if MODE==0
             int dest_rank = mapper.getWorkerForOST(data.ostNumber);
 #endif
 #if MODE==1
-            int dest_rank = dum++ % localSize;
+            int dest_rank = dis(gen);
 #endif
             FileTask task;
             strncpy(task.file_path, data.filename.c_str(), MAX_FILE_PATH_LEN);
@@ -203,10 +205,6 @@ public:
     }
 
     void directory_traversal() {
-#if MODE==1
-        int dum = 0;
-#endif
-
 #if TIME==1
         double start;
         double sum=0;
@@ -229,7 +227,7 @@ public:
 #endif
 
 #if MODE==1
-            int dest_rank = dum++ % localSize;
+            int dest_rank = dis(gen);
 #endif
             FileTask task;
             strncpy(task.file_path, dir_entry.path().string().c_str(), MAX_FILE_PATH_LEN);

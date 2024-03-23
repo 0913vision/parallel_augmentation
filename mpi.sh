@@ -1,7 +1,7 @@
 #!/bin/sh
 #PBS -V
 #PBS -N aug
-#PBS -q rokaf_knl
+#PBS -q cirnbio
 #PBS -A etc
 #PBS -l select=49:ncpus=64:mpiprocs=4
 #PBS -l walltime=24:00:00
@@ -40,11 +40,14 @@ function setup {
 
 loader_array=(24 24 48 48 72 72 96 96)
 np_array=(52 52 100 100 148 148 196 196)
-exp_type=(1 1 1 1)
+exp_type=(1 0 0 1)
 length=7
 
+delete
+setup
+
 #exp start
-for j in {0..$length}
+for j in $(seq 0 $length)
 do
 
 echo "===== $j =====" >> stdout
