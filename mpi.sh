@@ -11,9 +11,10 @@
 
 cd $PBS_O_WORKDIR
 
-DIR="/home01/sample_data/nurion_stripe/imagenet64"
-DATASET="/home01/sample_data/nurion_stripe/extracted_imagenet64"
-CATALOG="/home01/sample_data/nurion_stripe/imagenet64_catalog/catalog.txt"
+PDD="/home01/sample_data/nurion_stripe"
+DIR="$PDD/imagenet64"
+DATASET="$PDD/extracted_imagenet64"
+CATALOG="$PDD/imagenet64_catalog/catalog.txt"
 
 module purge
 module load craype-x86-skylake gcc/8.3.0 openmpi/3.1.0 python/3.9.5
@@ -21,95 +22,82 @@ module load craype-x86-skylake gcc/8.3.0 openmpi/3.1.0 python/3.9.5
 pip3 install urllib3==1.26.15
 pip3 install keras tensorflow-cpu scipy pillow
 
-echo "[shell] pip completed."
+# echo "[shell] pip completed." >> stdout
 
-# delete files
-rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
+function delete {
+    # delete files
+    rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
+}
 
-# ost setup
-for i in {0..23}
-do
-    mkdir $DIR/$i                # Create directory with the name as the current number
-    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
-done
+function setup {
+    # ost setup
+    for i in {0..23}
+    do
+        mkdir $DIR/$i                # Create directory with the name as the current number
+        lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
+    done
+}
 
 loader_array=(24 24 48 48 72 72 96 96)
 np_array=(52 52 100 100 148 148 196 196)
+exp_type=(1 1 1 1)
+length=7
 
 #exp start
-for j in {0..7}
+for j in {0..$length}
 do
 
 echo "===== $j =====" >> stdout
 
 # fc-no catalog
-./compile.sh 1 0 0 0
-echo "[FC-MDS]" >> stdout
+if [ "${exp_type[0]}" -eq 1 ]; then
+    ./compile.sh 1 0 0 0
+    echo "[FC-MDS]" >> stdout
 
-mpirun -n ${np_array[j]} python3 ./main_random.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
+    mpirun -n ${np_array[j]} python3 ./main_random.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
 
-#file delete
-rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
-
-#ost setup
-for i in {0..23}
-do
-    mkdir $DIR/$i                # Create directory with the name as the current number
-    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
-done
-sleep 10m
+    delete
+    setup
+    sleep 10m
+fi
 
 # oc-no catalog
-./compile.sh 0 0 0 0
-echo "[OC-MDS]" >> stdout
+if [ "${exp_type[1]}" -eq 1 ]; then
+    ./compile.sh 0 0 0 0
+    echo "[OC-MDS]" >> stdout
 
-mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
+    mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
 
-# file delete
-rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
-
-# setup
-for i in {0..23}
-do
-    mkdir $DIR/$i                # Create directory with the name as the current number
-    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
-done
-sleep 10m
+    delete
+    setup
+    sleep 10m
+fi
 
 # fc-catalog
-./compile.sh 1 1 0 0
-echo "[FC-CAT]" >> stdout
+if [ "${exp_type[2]}" -eq 1 ]; then
+    ./compile.sh 1 1 0 0
+    echo "[FC-CAT]" >> stdout
 
-mpirun -n ${np_array[j]} python3 ./main_random.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $CATALOG --save_path $DIR 1>>stdout 2>stderr
+    mpirun -n ${np_array[j]} python3 ./main_random.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $CATALOG --save_path $DIR 1>>stdout 2>stderr
 
-# file delete
-rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
-
-# setup
-for i in {0..23}
-do
-    mkdir $DIR/$i                # Create directory with the name as the current number
-    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
-done
-sleep 10m
+    delete
+    setup
+    sleep 10m
+fi
 
 # oc-catalog
-./compile.sh 0 1 0 0
-echo "[OC-CAT]" >> stdout
+if [ "${exp_type[3]}" -eq 1 ]; then
+    ./compile.sh 0 1 0 0
+    echo "[OC-CAT]" >> stdout
 
-mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $CATALOG --save_path $DIR 1>>stdout 2>stderr
+    mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $CATALOG --save_path $DIR 1>>stdout 2>stderr
 
-# file delete
-rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
-
-# setup
-for i in {0..23}
-do
-    mkdir $DIR/$i                # Create directory with the name as the current number
-    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
-done
-if [ $j -lt 7 ]; then
-sleep 10m
+    # file delete
+    delete
+    setup
+    if [ $j -lt $length ]; then
+    sleep 10m
+    fi
 fi
 
 done
