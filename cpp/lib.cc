@@ -189,11 +189,6 @@ public:
     ~Traverser() {}
 
     void catalog_traversal() {
-        if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
-            serialize_and_send(task_queues[dest_rank], dest_rank);
-            task_queues[dest_rank].clear();
-        }
-
         for (int i = 0; i < localSize; ++i) {
             if (!task_queues[i].empty()) {
                 serialize_and_send(task_queues[i], i);
