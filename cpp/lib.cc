@@ -114,6 +114,8 @@ private:
     int num_osts;
     int localSize;
     int stride;
+    OSTWorkerMapper mapper;
+    vector<vector<FileTask>> task_queues;
 
     void serialize_and_send(const std::vector<FileTask>& tasks, int dest_rank) {
         int total_size = 0;
@@ -150,7 +152,8 @@ private:
 
 public:
     Traverser(MPICommunication* mpi, const char* path, int num_osts, int num_loaders, int stride) 
-    : mpi(mpi), path(path), num_osts(num_osts), localSize(num_loaders), stride(stride) {
+    : mpi(mpi), path(path), num_osts(num_osts), localSize(num_loaders), stride(stride), 
+      mapper(num_osts, num_loaders), task_queues(num_loaders) {
 #if CATALOG==1
         ifstream file(path);
 
@@ -165,13 +168,6 @@ public:
             }
             dataList.push_back(data);
         }
-#endif
-    }
-    ~Traverser() {}
-
-    void catalog_traversal() {
-        OSTWorkerMapper mapper(num_osts, localSize);
-        vector<vector<FileTask>> task_queues(localSize);
 
 #if MODE==1
         int dum = 0;
@@ -187,11 +183,15 @@ public:
             strncpy(task.file_path, data.filename.c_str(), MAX_FILE_PATH_LEN);
             task.file_path[MAX_FILE_PATH_LEN - 1] = '\0';
             task_queues[dest_rank].push_back(task);
+        }
+#endif
+    }
+    ~Traverser() {}
 
-            if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
-                serialize_and_send(task_queues[dest_rank], dest_rank);
-                task_queues[dest_rank].clear();
-            }
+    void catalog_traversal() {
+        if (task_queues[dest_rank].size() >= TASK_QUEUE_FULL) {
+            serialize_and_send(task_queues[dest_rank], dest_rank);
+            task_queues[dest_rank].clear();
         }
 
         for (int i = 0; i < localSize; ++i) {
@@ -208,9 +208,6 @@ public:
     }
 
     void directory_traversal() {
-        vector<vector<FileTask>> task_queues(localSize);
-        OSTWorkerMapper mapper(num_osts, localSize);
-
 #if MODE==1
         int dum = 0;
 #endif
