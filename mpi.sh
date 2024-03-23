@@ -4,7 +4,7 @@
 #PBS -q rokaf_knl
 #PBS -A etc
 #PBS -l select=49:ncpus=64:mpiprocs=4
-#PBS -l walltime=06:00:00
+#PBS -l walltime=24:00:00
 #PBS -m abe
 #PBS -M 0913vision@gmail.com
 #PBS -W sandbox=PRIVATE
@@ -13,6 +13,7 @@ cd $PBS_O_WORKDIR
 
 DIR="/home01/sample_data/nurion_stripe/imagenet64"
 DATASET="/home01/sample_data/nurion_stripe/extracted_imagenet64"
+CATALOG="/home01/sample_data/nurion_stripe/imagenet64_catalog/catalog.txt"
 
 module purge
 module load craype-x86-skylake gcc/8.3.0 openmpi/3.1.0 python/3.9.5
@@ -32,38 +33,39 @@ do
     lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
 done
 
-loader_array=(24 24 48 72 96)
-np_array=(52 52 100 148 196)
+loader_array=(24 24 48 48 72 72 96 96)
+np_array=(52 52 100 100 148 148 196 196)
 
 #exp start
-for j in {0..4}
+for j in {0..7}
 do
 
-# not random (normal)
-#./compile.sh 0 0
-#echo "normal"
+echo "===== $j =====" >> stdout
 
-#mpirun -n 52 python3 ./main.py --processors 4 --loaders 24 --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
-
-#file delete
-#rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
-
-#ost setup
-#for i in {0..23}
-#do
-#    mkdir $DIR/$i                # Create directory with the name as the current number
-#    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
-#done
-
-# random
-
+# fc-no catalog
 ./compile.sh 1 0 0 0
-echo "random $j"
-echo "${np_array[j]} mpi processors, and ${loader_array[j]} loaders."
+echo "[FC-MDS]" >> stdout
 
 mpirun -n ${np_array[j]} python3 ./main_random.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
 
-# file deelete
+#file delete
+rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
+
+#ost setup
+for i in {0..23}
+do
+    mkdir $DIR/$i                # Create directory with the name as the current number
+    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
+done
+sleep 10m
+
+# oc-no catalog
+./compile.sh 0 0 0 0
+echo "[OC-MDS]" >> stdout
+
+mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
+
+# file delete
 rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
 
 # setup
@@ -72,8 +74,41 @@ do
     mkdir $DIR/$i                # Create directory with the name as the current number
     lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
 done
+sleep 10m
 
-if [ $j -lt 4 ]; then
+# fc-catalog
+./compile.sh 1 1 0 0
+echo "[FC-CAT]" >> stdout
+
+mpirun -n ${np_array[j]} python3 ./main_random.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $CATALOG --save_path $DIR 1>>stdout 2>stderr
+
+# file delete
+rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
+
+# setup
+for i in {0..23}
+do
+    mkdir $DIR/$i                # Create directory with the name as the current number
+    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
+done
+sleep 10m
+
+# oc-catalog
+./compile.sh 0 1 0 0
+echo "[OC-CAT]" >> stdout
+
+mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $CATALOG --save_path $DIR 1>>stdout 2>stderr
+
+# file delete
+rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
+
+# setup
+for i in {0..23}
+do
+    mkdir $DIR/$i                # Create directory with the name as the current number
+    lfs setstripe -i $i $DIR/$i  # Bind the directory to the OST with the same index
+done
+if [ $j -lt 7 ]; then
 sleep 10m
 fi
 
