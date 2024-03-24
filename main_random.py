@@ -36,7 +36,7 @@ def main(processors:int, loaders:int, workers: int, osts:int, dups:int, image_pa
 
     else: # worker part
         loader_rank = int((mpi.rank-(processors+loaders))/workers + processors)
-        worker = Worker_random.Worker_random(mpi=mpi, loader_rank=loader_rank, ost=loader_rank-processors, save_path=save_path, dups=dups)
+        worker = Worker_random.Worker_random(mpi=mpi, loader_rank=loader_rank, ost=(loader_rank-processors)%osts, save_path=save_path, dups=dups)
         mpi.barrier()
         worker.start()
         worker.join()
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument('--workers', type=int, help='the number of workers of a loader. (default(min): 1)', default=1)
     parser.add_argument('--osts', type=int, help='the number of osts (default: 24)', default=24)
     parser.add_argument('--dups', type=int, help='the number of augmented data (default(min): 1)', default=1)
-    parser.add_argument('--image_path', help='where your images are located', type=str, default='./images')
+    parser.add_argument('--image_path', help='where your images are located (or the catalog file)', type=str, default='./images')
     parser.add_argument('--save_path', type=str, help='where you want the augmented images to be saved', default='./')
     args = parser.parse_args()
     main(args.processors, args.loaders, args.workers, args.osts, args.dups, args.image_path, args.save_path)

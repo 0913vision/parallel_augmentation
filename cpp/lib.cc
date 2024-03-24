@@ -158,7 +158,7 @@ private:
 public:
     Traverser(MPICommunication* mpi, const char* path, int num_osts, int num_loaders, int stride) 
     : mpi(mpi), path(path), num_osts(num_osts), localSize(num_loaders), stride(stride), 
-      mapper(num_osts, num_loaders), task_queues(num_loaders), gen(rd()), dis(0,num_loaders) {
+      mapper(num_osts, num_loaders), task_queues(num_loaders), gen(rd()), dis(0,num_loaders-1) {
 #if CATALOG==1
         ifstream file(path);
 

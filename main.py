@@ -34,7 +34,7 @@ def main(processors:int, loaders:int, workers: int, osts:int, dups:int, image_pa
 
     else: # worker part
         loader_rank = int((mpi.rank-(processors+loaders))/workers + processors)
-        worker = Worker.Worker(mpi=mpi, loader_rank=loader_rank, ost=loader_rank-processors, save_path=save_path, dups=dups)
+        worker = Worker.Worker(mpi=mpi, loader_rank=loader_rank, ost=(loader_rank-processors)%osts, save_path=save_path, dups=dups)
         mpi.barrier()
         worker.start()
         worker.join()
