@@ -277,12 +277,32 @@ extern "C" {
         return new Traverser(mpi, path, num_osts, num_loaders, stride);
     }
     void traverser_start(Traverser* trav) {
+        MPICommunication* mpi = trav->mpi;
+        double start_time, end_time;
+
+        mpi->barrier(); // 모든 프로세스가 시작하기 전에 동기화
+        start_time = mpi->wtime();
+
 #if CATALOG==0
         trav->directory_traversal();
 #endif
+
 #if CATALOG==1
         trav->catalog_traversal();
 #endif
+
+        mpi->barrier(); // 모든 프로세스가 끝나기 전에 동기화
+        end_time = mpi->wtime();
+
+        if (mpi->getRank() == 0) { // Rank 0에서만 시간을 출력
+#if CATALOG==0
+            cout << "Directory traversal time: " << end_time - start_time << " seconds" << endl;
+#endif
+
+#if CATALOG==1
+            cout << "Catalog traversal time: " << end_time - start_time << " seconds" << endl;
+#endif
+        }
     }
 
     MPICommunication* create_mpi_communication() {

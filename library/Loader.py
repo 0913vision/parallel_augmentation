@@ -4,6 +4,7 @@ import threading
 import queue
 import os
 import struct
+import time
 
 class Communicator(threading.Thread):
     def __init__(self, mpi:MPI.MPI, network_queue:queue.Queue):
@@ -23,12 +24,14 @@ class Communicator(threading.Thread):
                 self.network_queue.put(tasks)
 
 class Fetcher(threading.Thread):
-    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int, processors:int):
         super().__init__()
         self.mpi = mpi
         self.first_worker_rank = first_worker_rank
         self.network_queue = network_queue
         self.num_workers = num_workers
+        self.read_time = 0.0  # 총 파일 읽기 시간을 저장하는 변수
+        self.processors = processors
 
     def run(self):
         dest = 0
@@ -47,10 +50,16 @@ class Fetcher(threading.Thread):
                     if ext.lower() not in supported_extensions:
                         continue
 
+                    start_time = time.time()
+
                     # Distribute files (with load balancing)
                     file = file.decode('utf-8')
                     name = os.path.basename(file)
                     img = img_to_array(load_img(file))
+
+                    read_time = time.time() - start_time
+                    self.read_time += read_time
+
                     # img = img.reshape((1,) + img.shape)
                     img_shape = img.shape
                     img_bytes = img.tobytes()
@@ -67,12 +76,33 @@ class Fetcher(threading.Thread):
                     if self.num_workers > 1:
                         dest = (dest+1) % self.num_workers
 
+        start_time = time.time()
+        if self.mpi.getRank() == self.processors:
+            all_read_times = [self.read_time]
+            for i in range(self.first_worker_rank + 1, self.first_worker_rank + self.num_workers):
+                read_time = self.mpi.char_recv(i, struct.calcsize('d'))
+                all_read_times.append(struct.unpack('d', read_time)[0])
+            
+            if all_read_times:
+                total_read_time = sum(all_read_times)
+                average_time = total_read_time / len(all_read_times)
+                max_time = max(all_read_times)
+                min_time = min(all_read_times)
+                print(f"Average read time: {average_time:.6f} seconds")
+                print(f"Max read time: {max_time:.6f} seconds")
+                print(f"Min read time: {min_time:.6f} seconds")
+            
+            end_time = time.time()
+            print(f"Read time calculation time: {end_time - start_time:.6f} seconds")
+        else:
+            self.mpi.char_send(self.processors, struct.pack('d', self.read_time))
+
 class Loader():
-    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, num_workers:int):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, num_workers:int, processors:int):
         self.network_queue = queue.Queue()
         self.num_workers = num_workers
         self.communicator = Communicator(mpi, self.network_queue)
-        self.fetcher = Fetcher(mpi, first_worker_rank, self.network_queue, self.num_workers)
+        self.fetcher = Fetcher(mpi, first_worker_rank, self.network_queue, self.num_workers, processors)
 
     def start(self):
         self.communicator.start()
