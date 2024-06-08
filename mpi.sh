@@ -28,10 +28,12 @@ pip3 install keras tensorflow-cpu scipy pillow
 function delete {
     # delete files
     # rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
-    mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_source.txt
-    mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_target.txt
-    rmdir $DIR
-    rmdir $DATASET
+    # mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_source.txt
+    # mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_target.txt
+    rm -rf $DIR
+    rm -rf $DATASET
+    # rmdir $DIR
+    # rmdir $DATASET
 }
 
 function setup {
