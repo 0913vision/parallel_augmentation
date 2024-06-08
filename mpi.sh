@@ -1,10 +1,10 @@
 #!/bin/sh
 #PBS -V
 #PBS -N aug
-#PBS -q cirnbio
+#PBS -q normal
 #PBS -A etc
-#PBS -l select=49:ncpus=64:mpiprocs=4
-#PBS -l walltime=24:00:00
+#PBS -l select=385:ncpus=64:mpiprocs=4
+#PBS -l walltime=48:00:00
 #PBS -m abe
 #PBS -M 0913vision@gmail.com
 #PBS -W sandbox=PRIVATE
@@ -12,9 +12,10 @@
 cd $PBS_O_WORKDIR
 
 PDD="/home01/sample_data/nurion_stripe"
-DIR="$PDD/imagenet64"
-DATASET="$PDD/extracted_imagenet64"
-CATALOG="$PDD/imagenet64_catalog/catalog.txt"
+DIR="$PDD/yc_target"
+DATASET="$PDD/yc_source"
+CATALOG="$PDD/all_file_paths_yc_source.txt"
+PREPARE="/scratch/s5104a22/imagenet_tiny_prepare"
 
 module purge
 module load craype-x86-skylake gcc/8.3.0 openmpi/3.1.0 python/3.9.5
@@ -26,10 +27,13 @@ pip3 install keras tensorflow-cpu scipy pillow
 
 function delete {
     # delete files
-    rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
+    # rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
+    mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_source.txt
+    mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_target.txt
 }
 
 function setup {
+    mpirun -np 1540 $PREPARE/make_dataset $PDD yc_source $PREPARE/train_merge 0
     # ost setup
     for i in {0..23}
     do
@@ -38,10 +42,10 @@ function setup {
     done
 }
 
-loader_array=(24 24 48 48 72 72 96 96)
-np_array=(52 52 100 100 148 148 196 196)
-exp_type=(1 0 0 1)
-length=7
+loader_array=(1 2 4 8 24 48 96 192 384 768)
+np_array=(6 8 12 20 52 100 196 388 772 1540)
+exp_type=(1 1 0 1)
+length=10
 
 delete
 setup
@@ -61,7 +65,7 @@ if [ "${exp_type[0]}" -eq 1 ]; then
 
     delete
     setup
-    sleep 10m
+    sleep 5m
 fi
 
 # oc-no catalog
@@ -73,7 +77,7 @@ if [ "${exp_type[1]}" -eq 1 ]; then
 
     delete
     setup
-    sleep 10m
+    sleep 5m
 fi
 
 # fc-catalog
@@ -85,7 +89,7 @@ if [ "${exp_type[2]}" -eq 1 ]; then
 
     delete
     setup
-    sleep 10m
+    sleep 5m
 fi
 
 # oc-catalog
@@ -99,8 +103,7 @@ if [ "${exp_type[3]}" -eq 1 ]; then
     delete
     setup
     if [ $j -lt $length ]; then
-    sleep 10m
+        sleep 5m
     fi
 fi
-
 done
