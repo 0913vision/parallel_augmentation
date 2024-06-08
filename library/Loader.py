@@ -78,7 +78,7 @@ class Fetcher(threading.Thread):
                         dest = (dest+1) % self.num_workers
 
         start_time = time.time()
-        if self.mpi.getRank() == self.processors:
+        if self.mpi.rank == self.processors:
             all_read_times = [self.read_time]
             for i in range(self.processors + 1, self.processors + self.loaders):
                 read_time = self.mpi.char_recv(i, struct.calcsize('d'))
