@@ -24,7 +24,7 @@ class Communicator(threading.Thread):
                 self.network_queue.put(tasks)
 
 class Fetcher(threading.Thread):
-    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int, processors:int):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int, processors:int, loaders:int):
         super().__init__()
         self.mpi = mpi
         self.first_worker_rank = first_worker_rank
@@ -32,6 +32,7 @@ class Fetcher(threading.Thread):
         self.num_workers = num_workers
         self.read_time = 0.0  # 총 파일 읽기 시간을 저장하는 변수
         self.processors = processors
+        self.loaders = loaders
 
     def run(self):
         dest = 0
@@ -79,7 +80,7 @@ class Fetcher(threading.Thread):
         start_time = time.time()
         if self.mpi.getRank() == self.processors:
             all_read_times = [self.read_time]
-            for i in range(self.first_worker_rank + 1, self.first_worker_rank + self.num_workers):
+            for i in range(self.processors + 1, self.processors + self.loaders):
                 read_time = self.mpi.char_recv(i, struct.calcsize('d'))
                 all_read_times.append(struct.unpack('d', read_time)[0])
             
@@ -98,11 +99,11 @@ class Fetcher(threading.Thread):
             self.mpi.char_send(self.processors, struct.pack('d', self.read_time))
 
 class Loader():
-    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, num_workers:int, processors:int):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, num_workers:int, processors:int, loaders:int):
         self.network_queue = queue.Queue()
         self.num_workers = num_workers
         self.communicator = Communicator(mpi, self.network_queue)
-        self.fetcher = Fetcher(mpi, first_worker_rank, self.network_queue, self.num_workers, processors)
+        self.fetcher = Fetcher(mpi, first_worker_rank, self.network_queue, self.num_workers, processors, loaders)
 
     def start(self):
         self.communicator.start()
