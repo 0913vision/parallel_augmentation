@@ -280,7 +280,6 @@ extern "C" {
         MPICommunication* mpi = trav->mpi;
         double start_time, end_time;
 
-        mpi->barrier(); // 모든 프로세스가 시작하기 전에 동기화
         start_time = mpi->wtime();
 
 #if CATALOG==0
@@ -291,10 +290,8 @@ extern "C" {
         trav->catalog_traversal();
 #endif
 
-        mpi->barrier(); // 모든 프로세스가 끝나기 전에 동기화
         end_time = mpi->wtime();
 
-        if (mpi->getRank() == 0) { // Rank 0에서만 시간을 출력
 #if CATALOG==0
             cout << "Directory traversal time: " << end_time - start_time << " seconds" << endl;
 #endif
@@ -302,7 +299,6 @@ extern "C" {
 #if CATALOG==1
             cout << "Catalog traversal time: " << end_time - start_time << " seconds" << endl;
 #endif
-        }
     }
 
     MPICommunication* create_mpi_communication() {
