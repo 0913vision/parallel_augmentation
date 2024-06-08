@@ -30,9 +30,12 @@ function delete {
     # rsync -a --delete /scratch/s5104a22/empty_dir/ $DIR
     mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_source.txt
     mpirun -np 1540 $PREPARE/delete_dataset $PDD/all_file_paths_yc_target.txt
+    rmdir $DIR
+    rmdir $DATASET
 }
 
 function setup {
+    mkdir -p $DIR
     mpirun -np 1540 $PREPARE/make_dataset $PDD yc_source $PREPARE/train_merge 0
     # ost setup
     for i in {0..23}
