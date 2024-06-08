@@ -42,8 +42,10 @@ function setup {
     done
 }
 
-loader_array=(1 2 4 8 24 48 96 192 384 768)
-np_array=(6 8 12 20 52 100 196 388 772 1540)
+# loader_array=(1 2 4 8 24 48 96 192 384 768)
+# np_array=(6 8 12 20 52 100 196 388 772 1540)
+loader_array=(768 384 192 96 48 24 8 4 2 1)
+np_array=(1540 772 388 196 100 52 20 12 8 6)
 exp_type=(1 1 0 1)
 length=10
 
