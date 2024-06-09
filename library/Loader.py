@@ -41,7 +41,7 @@ class Fetcher(threading.Thread):
             self.get_ost_time = 0.0
 
     def get_file_ost(self, file):
-        print("get_file_ost")
+        # print("get_file_ost")
         if isinstance(file, str):
             file = file.encode('utf-8')
         return self.getost.get_file_ost(file)
@@ -64,12 +64,8 @@ class Fetcher(threading.Thread):
                         continue
 
                     if self.getost:
-                        if self.mpi.rank == self.processors:
-                            print(file)
                         start_time = time.time()
-                        a = self.get_file_ost(file)
-                        if self.mpi.rank == self.processors:
-                            print(a)
+                        self.get_file_ost(file)
                         get_ost_time = time.time() - start_time
                         self.get_ost_time += get_ost_time
 
