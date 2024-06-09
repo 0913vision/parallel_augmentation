@@ -65,18 +65,18 @@ class Fetcher(threading.Thread):
                         continue
 
                     if self.get_ost:
-                        start_time = time.time()
+                        start_time = time.perf_counter()
                         self.get_file_ost(file)
-                        get_ost_time = time.time() - start_time
+                        get_ost_time = time.perf_counter() - start_time
                         self.get_ost_time += get_ost_time
 
-                    start_time = time.time()
+                    start_time = time.perf_counter()
                     # Distribute files (with load balancing)
                     file = file.decode('utf-8')
                     name = os.path.basename(file)
                     img = img_to_array(load_img(file))
 
-                    read_time = time.time() - start_time
+                    read_time = time.perf_counter() - start_time
                     self.read_time += read_time
 
                     # img = img.reshape((1,) + img.shape)
