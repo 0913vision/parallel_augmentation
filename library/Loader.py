@@ -61,8 +61,12 @@ class Fetcher(threading.Thread):
                         continue
 
                     if self.getost:
+                        if self.mpi.rank == self.processors:
+                            print(file)
                         start_time = time.time()
-                        self.get_file_ost(file)
+                        a = self.get_file_ost(file)
+                        if self.mpi.rank == self.processors:
+                            print(a)
                         get_ost_time = time.time() - start_time
                         self.get_ost_time += get_ost_time
 
