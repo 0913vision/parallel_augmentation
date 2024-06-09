@@ -298,11 +298,11 @@ extern "C" {
 #endif
 
 #if CATALOG==1
-        double start_time_2, end_time_2;
-        start_time_2 = mpi->wtime();
-        trav->directory_traversal();
-        end_time_2 = mpi->wtime();
-        cout << "Directory traversal time (Trash): " << end_time_2 - start_time_2 << " seconds" << endl;
+        // double start_time_2, end_time_2;
+        // start_time_2 = mpi->wtime();
+        // trav->directory_traversal();
+        // end_time_2 = mpi->wtime();
+        // cout << "Directory traversal time (Trash): " << end_time_2 - start_time_2 << " seconds" << endl;
         start_time = mpi->wtime();
         trav->catalog_traversal();
 #endif
