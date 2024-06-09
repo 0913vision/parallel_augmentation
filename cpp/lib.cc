@@ -211,7 +211,8 @@ public:
         start = mpi->wtime();
 #endif
     string new_path;
-    if (dir_entry.path().extension() == ".txt") {
+    if (path[strlen(path) - 4] == '.' && strcmp(path + strlen(path) - 3, "txt") == 0) {
+        cout << "path is a file\n";
         new_path = "/home01/sample_data/nurion_stripe/yc_source";
     } else {
         new_path = path;
