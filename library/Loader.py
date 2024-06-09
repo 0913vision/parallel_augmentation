@@ -34,6 +34,7 @@ class Fetcher(threading.Thread):
         self.read_time = 0.0  # 총 파일 읽기 시간을 저장하는 변수
         self.processors = processors
         self.loaders = loaders
+        self.get_ost = get_ost
         if get_ost:
             self.getost = ctypes.CDLL('./library/getost.so')
             self.getost.get_file_ost.argtypes = [ctypes.c_char_p]
@@ -63,7 +64,7 @@ class Fetcher(threading.Thread):
                     if ext.lower() not in supported_extensions:
                         continue
 
-                    if self.getost:
+                    if self.get_ost:
                         start_time = time.time()
                         self.get_file_ost(file)
                         get_ost_time = time.time() - start_time
