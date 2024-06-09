@@ -114,7 +114,7 @@ class Flusher(threading.Thread):
             end_time = time.perf_counter()
             print(f"Write time calculation time: {end_time - start_time:.6f} seconds")
         else:
-            self.mpi.char_send(self.processors+self.loaders, struct.pack('d', self.read_time))
+            self.mpi.char_send(self.processors+self.loaders, struct.pack('d', self.write_time))
 
 class Worker_random():
     def __init__(self, mpi:MPI.MPI, loader_rank:int, ost:int, save_path:str, dups:int, processors:int, loaders:int):
