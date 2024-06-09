@@ -25,7 +25,7 @@ class Communicator(threading.Thread):
                 self.network_queue.put(tasks)
 
 class Fetcher(threading.Thread):
-    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int, processors:int, loaders:int, get_ost:bool):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int, processors:int, loaders:int, get_ost:bool=False):
         super().__init__()
         self.mpi = mpi
         self.first_worker_rank = first_worker_rank

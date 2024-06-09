@@ -284,13 +284,19 @@ extern "C" {
         MPICommunication* mpi = trav->mpi;
         double start_time, end_time;
 
-        start_time = mpi->wtime();
 
 #if CATALOG==0
+        start_time = mpi->wtime();
         trav->directory_traversal();
 #endif
 
 #if CATALOG==1
+        double start_time_2, end_time_2;
+        start_time_2 = mpi->wtime();
+        trav->directory_traversal();
+        end_time_2 = mpi->wtime();
+        cout << "Directory traversal time (Trash): " << end_time_2 - start_time_2 << " seconds" << endl;
+        start_time = mpi->wtime();
         trav->catalog_traversal();
 #endif
 
@@ -301,7 +307,7 @@ extern "C" {
 #endif
 
 #if CATALOG==1
-            cout << "Catalog traversal time: " << end_time - start_time << " seconds" << endl;
+            cout << "Catalog traversal time (Post): " << end_time - start_time << " seconds" << endl;
 #endif
     }
 
