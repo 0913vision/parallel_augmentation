@@ -41,6 +41,7 @@ class Fetcher(threading.Thread):
             self.get_ost_time = 0.0
 
     def get_file_ost(self, file:str):
+        print("get_file_ost")
         print(file.encode('utf-8'))
         return self.getost.get_file_ost(file.encode('utf-8'))
 
