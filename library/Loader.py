@@ -70,13 +70,13 @@ class Fetcher(threading.Thread):
                         get_ost_time = time.perf_counter() - start_time
                         self.get_ost_time += get_ost_time
 
-                    start_time = time.perf_counter()
                     # Distribute files (with load balancing)
                     file = file.decode('utf-8')
                     name = os.path.basename(file)
+                    start_time = time.perf_counter()
                     img = img_to_array(load_img(file))
-
                     read_time = time.perf_counter() - start_time
+
                     self.read_time += read_time
 
                     # img = img.reshape((1,) + img.shape)
@@ -95,7 +95,7 @@ class Fetcher(threading.Thread):
                     if self.num_workers > 1:
                         dest = (dest+1) % self.num_workers
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         if self.mpi.rank == self.processors:
             all_read_times = [self.read_time]
             for i in range(self.processors + 1, self.processors + self.loaders):
@@ -111,7 +111,7 @@ class Fetcher(threading.Thread):
                 print(f"Max read time: {max_time:.6f} seconds")
                 print(f"Min read time: {min_time:.6f} seconds")
             
-            end_time = time.time()
+            end_time = time.perf_counter()
             print(f"Read time calculation time: {end_time - start_time:.6f} seconds")
         else:
             self.mpi.char_send(self.processors, struct.pack('d', self.read_time))
