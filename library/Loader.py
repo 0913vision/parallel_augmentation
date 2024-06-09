@@ -116,7 +116,7 @@ class Fetcher(threading.Thread):
         else:
             self.mpi.char_send(self.processors, struct.pack('d', self.read_time))
 
-        if self.getost:
+        if self.get_ost:
             if self.mpi.rank == self.processors:
                 all_get_ost_times = [self.get_ost_time]
                 for i in range(self.processors + 1, self.processors + self.loaders):
