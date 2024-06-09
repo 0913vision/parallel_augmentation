@@ -23,4 +23,4 @@ fi
 
 mpic++ -std=c++17 -fpermissive -shared -o ./library/lib.so -fPIC -DMODE=$MODE -DCATALOG=$CATALOG -DLOG=$LOG -DTIME=$TIME ./cpp/lib.cc -llustreapi -lstdc++fs
 
-g++ -fPIC -shared -o ./library/getost.so ./cpp/getost.cc -llustreapi
+g++ -std=c++17 -fpermissive -shared -o ./library/getost.so -fPIC ./cpp/getost.cc -llustreapi -lstdc++fs
