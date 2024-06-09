@@ -5,6 +5,7 @@ import queue
 import os
 import struct
 import time
+import ctypes
 
 class Communicator(threading.Thread):
     def __init__(self, mpi:MPI.MPI, network_queue:queue.Queue):
@@ -24,7 +25,7 @@ class Communicator(threading.Thread):
                 self.network_queue.put(tasks)
 
 class Fetcher(threading.Thread):
-    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int, processors:int, loaders:int):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, network_queue:queue.Queue, num_workers:int, processors:int, loaders:int, get_ost:bool):
         super().__init__()
         self.mpi = mpi
         self.first_worker_rank = first_worker_rank
@@ -33,6 +34,14 @@ class Fetcher(threading.Thread):
         self.read_time = 0.0  # 총 파일 읽기 시간을 저장하는 변수
         self.processors = processors
         self.loaders = loaders
+        if get_ost:
+            self.getost = ctypes.CDLL('./library/getost.so')
+            self.getost.get_file_ost.argtypes = [ctypes.c_char_p]
+            self.getost.get_file_ost.restype = ctypes.c_int
+            self.get_ost_time = 0.0
+
+    def get_file_ost(self, file:str):
+        return self.getost.get_file_ost(file.encode('utf-8'))
 
     def run(self):
         dest = 0
@@ -51,8 +60,13 @@ class Fetcher(threading.Thread):
                     if ext.lower() not in supported_extensions:
                         continue
 
-                    start_time = time.time()
+                    if self.getost:
+                        start_time = time.time()
+                        self.get_file_ost(file)
+                        get_ost_time = time.time() - start_time
+                        self.get_ost_time += get_ost_time
 
+                    start_time = time.time()
                     # Distribute files (with load balancing)
                     file = file.decode('utf-8')
                     name = os.path.basename(file)
@@ -98,12 +112,33 @@ class Fetcher(threading.Thread):
         else:
             self.mpi.char_send(self.processors, struct.pack('d', self.read_time))
 
+        if self.getost:
+            if self.mpi.rank == self.processors:
+                all_get_ost_times = [self.get_ost_time]
+                for i in range(self.processors + 1, self.processors + self.loaders):
+                    get_ost_time = self.mpi.char_recv(i, struct.calcsize('d'))
+                    all_get_ost_times.append(struct.unpack('d', get_ost_time)[0])
+                
+                if all_get_ost_times:
+                    total_get_ost_time = sum(all_get_ost_times)
+                    average_time = total_get_ost_time / len(all_get_ost_times)
+                    max_time = max(all_get_ost_times)
+                    min_time = min(all_get_ost_times)
+                    print(f"Average get_ost time: {average_time:.6f} seconds")
+                    print(f"Max get_ost time: {max_time:.6f} seconds")
+                    print(f"Min get_ost time: {min_time:.6f} seconds")
+                
+                end_time = time.time()
+                print(f"Get_ost time calculation time: {end_time - start_time:.6f} seconds")
+            else:
+                self.mpi.char_send(self.processors, struct.pack('d', self.get_ost_time))
+
 class Loader():
-    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, num_workers:int, processors:int, loaders:int):
+    def __init__(self, mpi:MPI.MPI, first_worker_rank:int, num_workers:int, processors:int, loaders:int, get_ost:bool):
         self.network_queue = queue.Queue()
         self.num_workers = num_workers
         self.communicator = Communicator(mpi, self.network_queue)
-        self.fetcher = Fetcher(mpi, first_worker_rank, self.network_queue, self.num_workers, processors, loaders)
+        self.fetcher = Fetcher(mpi, first_worker_rank, self.network_queue, self.num_workers, processors, loaders, get_ost)
 
     def start(self):
         self.communicator.start()

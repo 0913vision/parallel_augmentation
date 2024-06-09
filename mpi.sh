@@ -3,7 +3,7 @@
 #PBS -N aug
 #PBS -q normal
 #PBS -A etc
-#PBS -l select=385:ncpus=64:mpiprocs=4
+#PBS -l select=97:ncpus=64:mpiprocs=4
 #PBS -l walltime=48:00:00
 #PBS -m abe
 #PBS -M 0913vision@gmail.com
@@ -38,7 +38,7 @@ function delete {
 
 function setup {
     mkdir -p $DIR
-    mpirun -np 1540 $PREPARE/make_dataset $PDD yc_source $PREPARE/train_merge 0
+    mpirun -np 97 $PREPARE/make_dataset $PDD yc_source $PREPARE/train_merge 0
     # ost setup
     for i in {0..23}
     do
@@ -49,10 +49,11 @@ function setup {
 
 # loader_array=(1 2 4 8 24 48 96 192 384 768)
 # np_array=(6 8 12 20 52 100 196 388 772 1540)
-loader_array=(768 384 192 96 48 24 8 4 2 1)
-np_array=(1540 772 388 196 100 52 20 12 8 6)
+# loader_array=(768 384 192 96 48 24 8 4 2 1)
+loader_array=(192 96 48 24)
+np_array=(388 196 100 52)
 exp_type=(1 1 0 1)
-length=10
+length=4
 
 delete
 setup
@@ -80,7 +81,7 @@ if [ "${exp_type[1]}" -eq 1 ]; then
     ./compile.sh 0 0 0 0
     echo "[OC-MDS]" >> stdout
 
-    mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR 1>>stdout 2>stderr
+    mpirun -n ${np_array[j]} python3 ./main.py --processors 4 --loaders ${loader_array[j]} --workers 1 --osts 24 --dups 1 --image_path $DATASET --save_path $DIR --loader_get_ost True 1>>stdout 2>stderr
 
     delete
     setup

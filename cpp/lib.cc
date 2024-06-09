@@ -219,7 +219,11 @@ public:
 #endif
 
 #if MODE==0
-            int ost = get_file_ost(dir_entry.path().string());
+            // int ost = get_file_ost(dir_entry.path().string());
+            string file_name = dir_entry.path().filename().string();
+            string base_name = file_name.substr(0, file_name.find_last_of('.'));
+            string number_str = base_name.substr(3);
+            int ost = stoi(number_str)%24;
 #endif
             
 #if MODE==0

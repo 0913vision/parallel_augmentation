@@ -2,7 +2,7 @@ from library import Loader, Worker, Master, MPI
 import argparse
 import time
 
-def main(processors:int, loaders:int, workers: int, osts:int, dups:int, image_path:str, save_path:str):
+def main(processors:int, loaders:int, workers: int, osts:int, dups:int, image_path:str, save_path:str, loader_get_ost:bool):
     mpi = MPI.MPI()
 
     if mpi.size != processors+loaders*(workers+1):
@@ -26,7 +26,7 @@ def main(processors:int, loaders:int, workers: int, osts:int, dups:int, image_pa
     elif mpi.rank < processors+loaders:
         # loader part
         first_worker_rank = processors+loaders+(mpi.rank-processors)*workers
-        loader = Loader.Loader(mpi=mpi, first_worker_rank=first_worker_rank, num_workers=workers, processors=processors, loaders=loaders)
+        loader = Loader.Loader(mpi=mpi, first_worker_rank=first_worker_rank, num_workers=workers, processors=processors, loaders=loaders, get_ost=loader_get_ost)
         mpi.barrier()
         loader.start()
         loader.join()
@@ -50,5 +50,6 @@ if __name__ == "__main__":
     parser.add_argument('--dups', type=int, help='the number of augmented data (default(min): 1)', default=1)
     parser.add_argument('--image_path', help='where your images are located (or the catalog file)', type=str, default='./images')
     parser.add_argument('--save_path', type=str, help='where you want the augmented images to be saved', default='./')
+    parser.add_argument('--loader_get_ost', type=bool, help='Whether the loader should call llapi or not.', default=False)
     args = parser.parse_args()
-    main(args.processors, args.loaders, args.workers, args.osts, args.dups, args.image_path, args.save_path)
+    main(args.processors, args.loaders, args.workers, args.osts, args.dups, args.image_path, args.save_path, args.loader_get_ost)
