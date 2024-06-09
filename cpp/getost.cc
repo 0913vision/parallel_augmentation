@@ -6,7 +6,7 @@ using namespace std;
 
 extern "C" {
     int get_file_ost(const char* file_path) {
-        cout << "Getting OST for file: " << file_path << endl;
+        cout << "Getting OST for file: " << file_path << endl << flush;
         struct llapi_layout *layout = llapi_layout_get_by_path(file_path, 0);
         uint64_t ost_index;
 
