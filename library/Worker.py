@@ -59,8 +59,9 @@ class Augmenter(threading.Thread):
             # self.job_queue.task_done()
 
 class Flusher(threading.Thread):
-    def __init__(self, complete_queue:queue.Queue, ost:int, save_path:str, processors:int, loaders:int):
+    def __init__(self, mpi: MPI.MPI, complete_queue:queue.Queue, ost:int, save_path:str, processors:int, loaders:int):
         super().__init__()
+        self.mpi = mpi
         self.complete_queue = complete_queue
         self.ost = ost
         self.save_path = save_path
@@ -96,7 +97,7 @@ class Flusher(threading.Thread):
         start_time = time.perf_counter()
         if self.mpi.rank == self.processors+self.loaders:
             all_write_times = [self.write_time]
-            for i in range(self.processors + 1, self.processors + self.loaders):
+            for i in range(self.processors + self.loaders + 1, self.mpi.size):
                 write_time = self.mpi.char_recv(i, struct.calcsize('d'))
                 all_write_times.append(struct.unpack('d', write_time)[0])
             
@@ -112,13 +113,13 @@ class Flusher(threading.Thread):
             end_time = time.perf_counter()
             print(f"Write time calculation time: {end_time - start_time:.6f} seconds")
         else:
-            self.mpi.char_send(self.processors, struct.pack('d', self.read_time))
+            self.mpi.char_send(self.processors+self.loaders, struct.pack('d', self.read_time))
 
 class Worker():
     def __init__(self, mpi:MPI.MPI, loader_rank:int, ost:int, save_path:str, dups:int, processors:int, loaders:int):
         self.complete_queue = queue.Queue()
         self.augmenter = Augmenter(mpi, loader_rank, self.complete_queue, dups)
-        self.flusher = Flusher(self.complete_queue, ost, save_path, processors, loaders)
+        self.flusher = Flusher(mpi, self.complete_queue, ost, save_path, processors, loaders)
 
     def start(self):
         self.augmenter.start()
