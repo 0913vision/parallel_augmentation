@@ -217,7 +217,7 @@ public:
         new_path = path;
     }
 
-        for (const auto& dir_entry : recursive_directory_iterator(new_path.c_str()) {
+        for (const auto& dir_entry : recursive_directory_iterator(new_path.c_str())) {
             if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) continue;
 
 #if TIME==1
