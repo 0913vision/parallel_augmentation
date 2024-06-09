@@ -212,7 +212,7 @@ public:
 #endif
     string new_path;
     if (path[strlen(path) - 4] == '.' && strcmp(path + strlen(path) - 3, "txt") == 0) {
-        cout << "path is a file\n";
+        // cout << "path is a file\n";
         new_path = "/home01/sample_data/nurion_stripe/yc_source";
     } else {
         new_path = path;
