@@ -204,21 +204,20 @@ public:
         }
     }
 
+    void directory_traversal_2() {
+        string new_path = "/home01/sample_data/nurion_stripe/yc_source";
+        for (const auto& dir_entry : recursive_directory_iterator(new_path.c_str())) {
+            if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) continue;
+        }
+    }
+
     void directory_traversal() {
 #if TIME==1
         double start;
         double sum=0;
         start = mpi->wtime();
 #endif
-    string new_path;
-    if (path[strlen(path) - 4] == '.' && strcmp(path + strlen(path) - 3, "txt") == 0) {
-        // cout << "path is a file\n";
-        new_path = "/home01/sample_data/nurion_stripe/yc_source";
-    } else {
-        new_path = path;
-    }
-
-        for (const auto& dir_entry : recursive_directory_iterator(new_path.c_str())) {
+        for (const auto& dir_entry : recursive_directory_iterator(path)) {
             if (is_symlink(dir_entry) || !dir_entry.is_regular_file()) continue;
 
 #if TIME==1
@@ -298,11 +297,11 @@ extern "C" {
 #endif
 
 #if CATALOG==1
-        // double start_time_2, end_time_2;
-        // start_time_2 = mpi->wtime();
-        // trav->directory_traversal();
-        // end_time_2 = mpi->wtime();
-        // cout << "Directory traversal time (Trash): " << end_time_2 - start_time_2 << " seconds" << endl;
+        double start_time_2, end_time_2;
+        start_time_2 = mpi->wtime();
+        trav->directory_traversal_2();
+        end_time_2 = mpi->wtime();
+        cout << "Directory traversal time (Trash): " << end_time_2 - start_time_2 << " seconds" << endl;
         start_time = mpi->wtime();
         trav->catalog_traversal();
 #endif
