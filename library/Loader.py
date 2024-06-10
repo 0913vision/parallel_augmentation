@@ -132,7 +132,7 @@ class Fetcher(threading.Thread):
                     print(f"Max get_ost time: {max_time:.6f} seconds")
                     print(f"Min get_ost time: {min_time:.6f} seconds")
                 
-                end_time = time.time()
+                end_time = time.perf_counter()
                 print(f"Get_ost time calculation time: {end_time - start_time:.6f} seconds")
             else:
                 self.mpi.char_send(self.processors, struct.pack('d', self.get_ost_time))
