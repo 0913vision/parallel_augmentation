@@ -118,6 +118,7 @@ class Fetcher(threading.Thread):
 
         if self.get_ost:
             if self.mpi.rank == self.processors:
+                start_time = time.perf_counter()
                 all_get_ost_times = [self.get_ost_time]
                 for i in range(self.processors + 1, self.processors + self.loaders):
                     get_ost_time = self.mpi.char_recv(i, struct.calcsize('d'))
